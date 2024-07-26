@@ -11,6 +11,15 @@ class Inconsistent_Node:
         self.topological_error = False
         self.repair_type = 1 if generalization else 2
     
+    def get_id(self):
+        return self.id
+
+    def get_generalization(self):
+        return self.generalization
+
+    def get_repair_set(self):
+        return self.repair_set
+
     def get_n_topology_changes(self):
         return self.n_topology_changes
 
@@ -22,6 +31,21 @@ class Inconsistent_Node:
 
     def get_n_flip_edges_operations(self):
         return self.n_flip_edges_operations
+
+    def is_repaired(self):
+        return self.repaired
+
+    def has_topological_error(self):
+        return self.topological_error
+
+    def get_repair_type(self):
+        return self.repair_type
+    
+    def set_repair_type(self, repair_type):
+        self.repair_type = repair_type
+    
+    def set_topological_error(self, topological_error):
+        self.topological_error = topological_error
 
     def add_repair_set(self, repair_set):
         if not self.repaired:
