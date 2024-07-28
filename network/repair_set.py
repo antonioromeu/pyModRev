@@ -1,3 +1,7 @@
+import unittest
+from edge import Edge
+from function import Function
+
 class Repair_Set:
     def __init__(self):
         self.repaired_functions = []
@@ -95,5 +99,74 @@ class Repair_Set:
             found = any(added_edge.is_equal(added_edge_2) for added_edge_2 in repair_set.get_added_edges())
             if not found:
                 return False
-
         return True
+
+class TestRepairSet(unittest.TestCase):
+    def setUp(self):
+        self.repair_set = Repair_Set()
+
+    def test_initial_values(self):
+        self.assertEqual(self.repair_set.get_repaired_functions(), [])
+        self.assertEqual(self.repair_set.get_flipped_edges(), [])
+        self.assertEqual(self.repair_set.get_removed_edges(), [])
+        self.assertEqual(self.repair_set.get_added_edges(), [])
+        self.assertEqual(self.repair_set.get_n_topology_changes(), 0)
+        self.assertEqual(self.repair_set.get_n_repair_operations(), 0)
+        self.assertEqual(self.repair_set.get_n_filp_edges_operations(), 0)
+        self.assertEqual(self.repair_set.get_n_add_remove_operations(), 0)
+
+    def test_add_repaired_function(self):
+        function = Function('function1')
+        self.repair_set.add_repaired_function(function)
+        self.assertIn(function, self.repair_set.get_repaired_functions())
+        self.assertEqual(self.repair_set.get_n_repair_operations(), 1)
+
+    def test_add_flipped_edge(self):
+        edge_instance = Edge('edge1')
+        self.repair_set.add_flipped_edge(edge_instance)
+        self.assertIn(edge_instance, self.repair_set.get_flipped_edges())
+        self.assertEqual(self.repair_set.get_n_repair_operations(), 1)
+        self.assertEqual(self.repair_set.get_n_topology_changes(), 1)
+        self.assertEqual(self.repair_set.get_n_filp_edges_operations(), 1)
+
+    def test_remove_edge(self):
+        edge_instance = Edge('edge1')
+        self.repair_set.remove_edge(edge_instance)
+        self.assertIn(edge_instance, self.repair_set.get_removed_edges())
+        self.assertEqual(self.repair_set.get_n_repair_operations(), 1)
+        self.assertEqual(self.repair_set.get_n_topology_changes(), 1)
+        self.assertEqual(self.repair_set.get_n_add_remove_operations(), 1)
+
+    def test_add_edge(self):
+        edge_instance = Edge('edge1')
+        self.repair_set.add_edge(edge_instance)
+        self.assertIn(edge_instance, self.repair_set.get_added_edges())
+        self.assertEqual(self.repair_set.get_n_repair_operations(), 1)
+        self.assertEqual(self.repair_set.get_n_topology_changes(), 1)
+        self.assertEqual(self.repair_set.get_n_add_remove_operations(), 1)
+
+    def test_is_equal(self):
+        repair_set1 = Repair_Set()
+        repair_set2 = Repair_Set()
+
+        function_instance = Function('function1')
+        edge1 = Edge('edge1')
+        edge2 = Edge('edge2')
+
+        repair_set1.add_repaired_function(function_instance)
+        repair_set1.add_flipped_edge(edge1)
+        repair_set1.remove_edge(edge2)
+        repair_set1.add_edge(edge1)
+
+        repair_set2.add_repaired_function(function_instance)
+        repair_set2.add_flipped_edge(edge1)
+        repair_set2.remove_edge(edge2)
+        repair_set2.add_edge(edge1)
+
+        self.assertTrue(repair_set1.is_equal(repair_set2))
+
+        repair_set2.add_edge(edge('edge3'))
+        self.assertFalse(repair_set1.is_equal(repair_set2))
+
+if __name__ == '__main__':
+    unittest.main()

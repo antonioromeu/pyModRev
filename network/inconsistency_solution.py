@@ -1,3 +1,4 @@
+import unittest
 from repair_set import Repair_Set
 
 class Inconsistency_Solution:
@@ -166,7 +167,7 @@ class Inconsistency_Solution:
                 for removed_edge in repair.get_removed_edges():
                     print(f"\t\t\tRemove edge ({removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()}).")
                 for added_edge in repair.get_added_edges():
-                    print(f"\t\t\tAdd edge ({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}) with sign {added_edge.getSign()}.")
+                    print(f"\t\t\tAdd edge ({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}) with sign {added_edge.get_sign()}.")
                 if not print_all:
                     break
         if Configuration.isActive("labelling"):
@@ -183,40 +184,40 @@ class Inconsistency_Solution:
     def print_parsable_solution(self, verbose_level):
         if verbose_level > 0:
             print("[", end="")
-        firstNode = True
+        first_node = True
         for i_node in self.i_nodes.values():
-            if not firstNode:
+            if not first_node:
                 print(";" if verbose_level > 0 else "/", end="")
-            firstNode = False
-            print(f"{i_node.id}:" if verbose_level > 0 else "@", end="")
-            firstRepair = True
-            for repair in i_node.repair_set:
-                if not firstRepair:
+            first_node = False
+            print(f"{i_node.get_id()}:" if verbose_level > 0 else "@", end="")
+            first_repair = True
+            for repair in i_node.get_repair_set():
+                if not first_repair:
                     print(";" if verbose_level > 0 else ":", end="")
-                firstRepair = False
+                first_repair = False
                 if verbose_level > 0:
                     print("{", end="")
                 first = True
-                for added_edge in repair.addedEdges:
+                for added_edge in repair.get_added_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"A:({added_edge.getStart().id},{added_edge.getEnd().id},{added_edge.getSign()})" if verbose_level > 0 else f"A,{added_edge.getStart().id},{added_edge.getEnd().id},{added_edge.getSign()}", end="")
-                for removed_edge in repair.removedEdges:
+                    print(f"A:({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()})" if verbose_level > 0 else f"A,{added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()}", end="")
+                for removed_edge in repair.get_removed_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"R:({removed_edge.getStart().id},{removed_edge.getEnd().id})" if verbose_level > 0 else f"R,{removed_edge.getStart().id},{removed_edge.getEnd().id}", end="")
-                for flipped_edge in repair.flippedEdges:
+                    print(f"R:({removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()})" if verbose_level > 0 else f"R,{removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()}", end="")
+                for flipped_edge in repair.get_flipped_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"E:({flipped_edge.getStart().id},{flipped_edge.getEnd().id})" if verbose_level > 0 else f"E,{flipped_edge.getStart().id},{flipped_edge.getEnd().id}", end="")
-                for repaired_function in repair.repairedFunctions:
+                    print(f"E:({flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()})" if verbose_level > 0 else f"E,{flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()}", end="")
+                for repaired_function in repair.get_repaired_functions():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"F:{repaired_function.printFunction()}" if verbose_level > 0 else f"F,{repaired_function.printFunction()}", end="")
+                    print(f"F:{repaired_function.print_function()}" if verbose_level > 0 else f"F,{repaired_function.print_function()}", end="")
                 if verbose_level > 0:
                     print("}", end="")
             if verbose_level > 0:
@@ -229,57 +230,57 @@ class Inconsistency_Solution:
         print("{")
         print(f"\t\"solution_repairs\": {self.n_repair_operations},")
         print("\t\"node_repairs\": [")
-        firstNode = True
+        first_node = True
         for i_node in self.i_nodes.values():
-            if not firstNode:
+            if not first_node:
                 print(",")
-            firstNode = False
+            first_node = False
             print("\t\t{")
-            print(f"\t\t\t\"node\": {i_node.id},")
+            print(f"\t\t\t\"node\": {i_node.get_id()},")
             print("\t\t\t\"repairs\": [")
-            firstRepair = True
-            for repair in i_node.repair_set:
-                if not firstRepair:
+            first_repair = True
+            for repair in i_node.get_repair_set():
+                if not first_repair:
                     print(",")
-                firstRepair = False
+                first_repair = False
                 print("\t\t\t\t{")
                 print("\t\t\t\t\t\"repairs\": [")
                 first = True
-                for added_edge in repair.addedEdges:
+                for added_edge in repair.get_added_edges():
                     if not first:
                         print(",")
                     first = False
                     print("\t\t\t\t\t\t{")
                     print("\t\t\t\t\t\t\t\"type\": \"add\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {added_edge.getStart().id},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {added_edge.getEnd().id},")
-                    print(f"\t\t\t\t\t\t\t\"sign\": {added_edge.getSign()}")
+                    print(f"\t\t\t\t\t\t\t\"from\": {added_edge.get_start_node().get_id()},")
+                    print(f"\t\t\t\t\t\t\t\"to\": {added_edge.get_end_node().get_id()},")
+                    print(f"\t\t\t\t\t\t\t\"sign\": {added_edge.get_sign()}")
                     print("\t\t\t\t\t\t}")
-                for removed_edge in repair.removedEdges:
+                for removed_edge in repair.get_removed_edges():
                     if not first:
                         print(",")
                     first = False
                     print("\t\t\t\t\t\t{")
                     print("\t\t\t\t\t\t\t\"type\": \"remove\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {removed_edge.getStart().id},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {removed_edge.getEnd().id}")
+                    print(f"\t\t\t\t\t\t\t\"from\": {removed_edge.get_start_node().get_id()},")
+                    print(f"\t\t\t\t\t\t\t\"to\": {removed_edge.get_end_node().get_id()}")
                     print("\t\t\t\t\t\t}")
-                for flipped_edge in repair.flippedEdges:
+                for flipped_edge in repair.get_flipped_edges():
                     if not first:
                         print(",")
                     first = False
                     print("\t\t\t\t\t\t{")
                     print("\t\t\t\t\t\t\t\"type\": \"flip\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {flipped_edge.getStart().id},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {flipped_edge.getEnd().id}")
+                    print(f"\t\t\t\t\t\t\t\"from\": {flipped_edge.get_start_node().get_id()},")
+                    print(f"\t\t\t\t\t\t\t\"to\": {flipped_edge.get_end_node().get_id()}")
                     print("\t\t\t\t\t\t}")
-                for repaired_function in repair.repairedFunctions:
+                for repaired_function in repair.get_repaired_functions():
                     if not first:
                         print(",")
                     first = False
                     print("\t\t\t\t\t\t{")
                     print("\t\t\t\t\t\t\t\"type\": \"change_function\",")
-                    print(f"\t\t\t\t\t\t\t\"function\": \"{repaired_function.printFunction()}\"")
+                    print(f"\t\t\t\t\t\t\t\"function\": \"{repaired_function.print_function()}\"")
                     print("\t\t\t\t\t\t}")
                 print("\t\t\t\t\t]")
                 print("\t\t\t\t}")
@@ -290,9 +291,9 @@ class Inconsistency_Solution:
         print("\t]")
         if Configuration.isActive("labelling"):
             print("\t### Labelling for this solution:")
-            multipleProfiles = Configuration.isActive("multipleProfiles")
+            multiple_profiles = Configuration.isActive("multipleProfiles")
             for profile, times in self.v_label.items():
-                if multipleProfiles:
+                if multiple_profiles:
                     print(f"\t\tProfile: {profile}")
                 for time, ids in times.items():
                     print(f"\t\t\tTime step: {time}")
@@ -308,7 +309,7 @@ class Inconsistency_Solution:
                 first = False
             else:
                 print(",", end="")
-            print(f"\"{Util_h.cleanString(i_node.id)}\"", end="")
+            print(f"\"{Util_h.cleanString(i_node.get_id())}\"", end="")
         print("],")
         print(f"{prefix}\"profiles\": [", end="")
         first = True
@@ -319,3 +320,88 @@ class Inconsistency_Solution:
                 print(",", end="")
             print(f"\"{Util_h.cleanString(i_profile)}\"", end="")
         print("]")
+
+class TestInconsistencySolution(unittest.TestCase):
+    def setUp(self):
+        self.solution = Inconsistency_Solution()
+
+    def test_initial_values(self):
+        self.assertEqual(self.solution.get_i_nodes(), {})
+        self.assertEqual(self.solution.get_v_label(), {})
+        self.assertEqual(self.solution.get_updates(), {})
+        self.assertEqual(self.solution.get_i_profiles(), {})
+        self.assertEqual(self.solution.get_i_nodes_profiles(), [])
+        self.assertEqual(self.solution.get_n_topology_changes(), 0)
+        self.assertEqual(self.solution.get_n_ar_operations(), 0)
+        self.assertEqual(self.solution.get_n_e_operations(), 0)
+        self.assertEqual(self.solution.get_n_repair_operations(), 0)
+        self.assertFalse(self.solution.get_has_impossibility())
+
+    def test_add_generalization(self):
+        self.solution.add_generalization(1)
+        self.assertIn(1, self.solution.get_i_nodes())
+        self.assertTrue(self.solution.get_i_node(1).is_generalization)
+        self.assertEqual(self.solution.get_i_node(1).get_repair_type(), 1)
+
+    def test_add_particularization(self):
+        self.solution.add_particularization(1)
+        self.assertIn(1, self.solution.get_i_nodes())
+        self.assertFalse(self.solution.get_i_node(1).is_generalization)
+        self.assertEqual(self.solution.get_i_node(1).get_repair_type(), 2)
+
+    def test_add_topological_error(self):
+        self.solution.add_topological_error(1)
+        self.assertIn(1, self.solution.get_i_nodes())
+        self.assertTrue(self.solution.get_i_node(1).topological_error)
+
+    def test_add_v_label(self):
+        self.solution.add_v_label("profile1", 1, "value1", "time1")
+        self.assertIn("profile1", self.solution.get_v_label())
+        self.assertIn("time1", self.solution.get_v_label()["profile1"])
+        self.assertIn(1, self.solution.get_v_label()["profile1"]["time1"])
+        self.assertEqual(self.solution.get_v_label()["profile1"]["time1"][1], "value1")
+
+    def test_add_update(self):
+        self.solution.add_update("time1", "profile1", 1)
+        self.assertIn("time1", self.solution.get_updates())
+        self.assertIn("profile1", self.solution.get_updates()["time1"])
+        self.assertIn(1, self.solution.get_updates()["time1"]["profile1"])
+
+    def test_add_inconsistent_profile(self):
+        self.solution.add_inconsistent_profile("profile1", 1)
+        self.assertIn("profile1", self.solution.get_i_profiles())
+        self.assertIn(1, self.solution.get_i_profiles()["profile1"])
+        self.assertIn(1, self.solution.get_i_nodes_profiles())
+        self.assertIn("profile1", self.solution.get_i_nodes_profiles()[1])
+
+    def test_compare_repairs(self):
+        other_solution = Inconsistency_Solution()
+        other_solution.n_ar_operations = 5
+        self.solution.n_ar_operations = 3
+        self.assertEqual(self.solution.compare_repairs(other_solution), 1)
+
+        other_solution.n_ar_operations = 3
+        other_solution.n_e_operations = 5
+        self.solution.n_e_operations = 3
+        self.assertEqual(self.solution.compare_repairs(other_solution), 1)
+
+        other_solution.n_e_operations = 3
+        other_solution.n_repair_operations = 5
+        self.solution.n_repair_operations = 3
+        self.assertEqual(self.solution.compare_repairs(other_solution), 1)
+
+        other_solution.n_repair_operations = 3
+        self.assertEqual(self.solution.compare_repairs(other_solution), 0)
+
+    def test_add_repair_set(self):
+        repair_set = RepairSet(1, 2, 3, 4)
+        self.solution.add_generalization(1)
+        self.solution.add_repair_set(1, repair_set)
+
+        self.assertEqual(self.solution.get_n_topology_changes(), 1)
+        self.assertEqual(self.solution.get_n_ar_operations(), 2)
+        self.assertEqual(self.solution.get_n_e_operations(), 3)
+        self.assertEqual(self.solution.get_n_repair_operations(), 4)
+
+if __name__ == '__main__':
+    unittest.main()
