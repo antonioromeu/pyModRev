@@ -1,5 +1,6 @@
 import unittest
 from repair_set import Repair_Set
+from inconsistent_node import Inconsistent_Node
 
 class Inconsistency_Solution:
     def __init__(self):
@@ -394,7 +395,7 @@ class TestInconsistencySolution(unittest.TestCase):
         self.assertEqual(self.solution.compare_repairs(other_solution), 0)
 
     def test_add_repair_set(self):
-        repair_set = RepairSet(1, 2, 3, 4)
+        repair_set = Repair_Set(1, 2, 3, 4)
         self.solution.add_generalization(1)
         self.solution.add_repair_set(1, repair_set)
 

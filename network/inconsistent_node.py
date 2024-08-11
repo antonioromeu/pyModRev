@@ -1,4 +1,5 @@
 import unittest
+from repair_set import Repair_Set
 
 class Inconsistent_Node:
     def __init__(self, id: str, generalization: bool):
@@ -109,8 +110,8 @@ class TestInconsistentNode(unittest.TestCase):
         self.assertTrue(self.node_generalization.has_topological_error())
 
     def test_add_repair_set(self):
-        repair_set1 = RepairSet(1, 2, 3, 4)
-        repair_set2 = RepairSet(1, 1, 2, 3)  # Better repair set
+        repair_set1 = Repair_Set(1, 2, 3, 4)
+        repair_set2 = Repair_Set(1, 1, 2, 3)  # Better repair set
 
         self.node_generalization.add_repair_set(repair_set1)
         self.assertTrue(self.node_generalization.is_repaired())
@@ -127,8 +128,8 @@ class TestInconsistentNode(unittest.TestCase):
         self.assertEqual(len(self.node_generalization.get_repair_set()), 1)
 
     def test_add_worse_repair_set(self):
-        repair_set1 = RepairSet(1, 2, 3, 4)
-        repair_set2 = RepairSet(1, 3, 4, 5)  # Worse repair set
+        repair_set1 = Repair_Set(1, 2, 3, 4)
+        repair_set2 = Repair_Set(1, 3, 4, 5)  # Worse repair set
 
         self.node_generalization.add_repair_set(repair_set1)
         self.node_generalization.add_repair_set(repair_set2)

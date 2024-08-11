@@ -1,22 +1,18 @@
 import unittest
-from function import Function
+from network.function import Function
 
 class Node:
-    def __init__(self, id):
+    def __init__(self, id: str) -> None:
         self.id = id
-        self.reg_function = Function(id)
+        self.function = Function(id)
 
-    def __del__(self):
-        del self.reg_function
+    def add_function(self, function: Function) -> None:
+        self.function = function
 
-    def add_function(self, regulation):
-        self.reg_function = regulation
-        return regulation
+    def get_function(self) -> Function:
+        return self.function
 
-    def get_function(self):
-        return self.reg_function
-
-    def get_id(self):
+    def get_id(self) -> str:
         return self.id
 
 class TestNode(unittest.TestCase):

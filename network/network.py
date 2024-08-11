@@ -1,62 +1,101 @@
 import unittest
-from node import Node
-from edge import Edge
+from network.node import Node
+from network.edge import Edge
+from typing import Dict, List
 
 class Network:
-    def __init__(self):
-        self.nodes = {}
+    def __init__(self) -> None:
+        self.nodes = {} # {'node_id_1': node_1, 'node_id_2': node_2, ...}
         self.edges = []
+        self.graph = {} # {'node_id_1': ['node_id_2', 'node_id_3'], 'node_id_2': ['node_id_1'], ...}
+        self.regulators = {} # Reverse of graph {'node_id_1': ['node_id_2'], 'node_id_2': ['node_id_1'], 'node_id_3': ['node_id_1'], ...}
+        self.input_file_network = ''
         self.observation_files = []
         self.has_ss_obs = False
         self.has_ts_obs = False
-
-    def __del__(self):
-        for node in self.nodes:
-            del node
-
-        for edge in self.edges:
-            del edge
     
-    def get_node(self, id):
-        return self.nodes[id]
+    def get_node(self, id: str) -> Node:
+        for node_id in self.nodes.keys():
+            if node_id == id:
+                return self.nodes[node_id]
+        raise ValueError('Node does not exist!')
 
-    def get_nodes(self):
+    def get_nodes(self) -> Dict[str, Node]:
         return self.nodes
-
-    def add_node(self, id): # TODO ask about if ret.second == false
-        node = Node(id)
-        self.nodes[id] = node
-        return node
-
-    def get_edge(self, start_node_id, end_node_id):
-        for edge in self.edges:
-            if edge.get_start_node().get_id() == start_node_id and edge.get_end_node().get_id == end_node_id:
-                return edge
-        return None
     
-    def get_edges(self):
+    def get_edge(self, start_node_id: str, end_node_id: str) -> Edge:
+        for edge in self.edges:
+            if edge.get_start_node().get_id() == start_node_id \
+                    and edge.get_end_node().get_id == end_node_id:
+                return edge
+        raise ValueError('Edge does not exist!')
+    
+    def get_edges(self) -> List[Edge]:
         return self.edges
+    
+    def get_input_file_network(self) -> str:
+        return self.input_file_network
 
-    def add_edge(self, start_node, end_node, sign):
-        edge = Edge(start_node, end_node, sign)
-        self.edges.append(edge)
-        return edge
+    def add_node(self, id: str) -> Node:
+        try:
+            return self.get_node(id)
+        except ValueError:
+            node = Node(id)
+            self.nodes[id] = node
+            self.graph[id] = []
+            return node
 
-    def add_edge(self, edge_to_add):
-        self.edges.append(edge_to_add)
+    def add_edge(self, start_node: Node, end_node: Node, sign: int) -> None:
+        try:
+            return self.get_edge(start_node.get_id(), end_node.get_id())
+        except ValueError:
+            edge = Edge(start_node, end_node, sign)
+            self.edges.append(edge)
+            self.graph[edge.get_start_node().get_id()].append(edge.get_end_node().get_id())
+            if edge.get_end_node().get_id() not in self.regulators.keys():
+                self.regulators[edge.get_end_node().get_id()] = [edge.get_start_node().get_id()]
+            else:
+                self.regulators[edge.get_end_node().get_id()].append(edge.get_start_node().get_id())
+            # return edge
 
-    def remove_edge(self, start_node_id, end_node_id):
+    # def add_edge(self, edge: Edge) -> None:
+    #     if edge.get_start_node().get_id() in self.graph.keys() and \
+    #         edge.get_end_node().get_id() in self.graph[edge.get_start_node().get_id()]:
+    #         raise ValueError('Edge already exists!')
+    #     self.edges.append(edge)
+    #     self.graph[edge.get_start_node().get_id()].append(edge.get_end_node().get_id())
+    #     self.regulators[edge.get_end_node().get_id()].append(edge.get_start_node().get_id())
+        # return edge
+
+    def remove_edge(self, start_node_id: str, end_node_id: str) -> None:
+        self.graph[start_node_id].remove(end_node_id)
+        self.regulators[end_node_id].remove(start_node_id)
         for i, edge in enumerate(self.edges):
-            if edge.get_start_node().get_id() == start_node_id and edge.get_end_node().get_id() == end_node_id:
+            if edge.get_start_node().get_id() == start_node_id and \
+                    edge.get_end_node().get_id() == end_node_id:
                 del self.edges[i]
                 return
 
-    def remove_edge(self, edge_to_remove):
-         for i, edge in enumerate(self.edges):
-            if (edge.get_start_node().get_id() == edge_to_remove.get_start_node().get_id()) 
-                    and (edge.get_end_node().get_id() == edge_to_remove.get_end_node().get_id()):
+    def remove_edge(self, edge_to_remove: Edge) -> None:
+        self.graph[edge_to_remove.get_start_node().get_id()].remove(edge_to_remove.get_end_node().get_id())
+        self.regulators[edge_to_remove.get_end_node().get_id()].remove(edge_to_remove.get_start_node().get_id())
+        for i, edge in enumerate(self.edges):
+            if edge.get_start_node().get_id() == edge_to_remove.get_start_node().get_id() and \
+                    edge.get_end_node().get_id() == edge_to_remove.get_end_node().get_id():
                 del self.edges[i]
                 return
+    
+    def set_has_ss_obs(self, has_ss_obs: bool) -> None:
+        self.has_ss_obs = has_ss_obs
+
+    def set_has_ts_obs(self, has_ts_obs: bool) -> None:
+        self.has_ts_obs = has_ts_obs
+    
+    def set_input_file_network(self, input_file_netowrk: str) -> None:
+        self.input_file_network = input_file_netowrk
+    
+    def add_observation_file(self, observation_file: str) -> None:
+        self.observation_files.append(observation_file)
 
 class TestNetwork(unittest.TestCase):
     def setUp(self):

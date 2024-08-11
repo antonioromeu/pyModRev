@@ -165,7 +165,7 @@ class TestRepairSet(unittest.TestCase):
 
         self.assertTrue(repair_set1.is_equal(repair_set2))
 
-        repair_set2.add_edge(edge('edge3'))
+        repair_set2.add_edge(Edge('edge3'))
         self.assertFalse(repair_set1.is_equal(repair_set2))
 
 if __name__ == '__main__':
