@@ -23,8 +23,8 @@ class Edge:
     def flip_sign(self) -> None:
         self.sign = 1 if self.sign == 0 else 0
 
-    def set_fixed(self, fixed: bool) -> None:
-        self.fixed = fixed
+    def set_fixed(self) -> None:
+        self.fixed = True
 
     def is_equal(self, edge, check_sign: bool) -> bool:
         if self.start_node.get_id() != edge.get_start_node().get_id() or \

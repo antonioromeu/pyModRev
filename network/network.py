@@ -15,10 +15,10 @@ class Network:
         self.has_ts_obs = False
     
     def get_node(self, id: str) -> Node:
-        for node_id in self.nodes.keys():
-            if node_id == id:
-                return self.nodes[node_id]
-        raise ValueError('Node does not exist!')
+        node = None
+        if id in self.nodes.keys():
+            node = self.nodes[id]
+        return node
 
     def get_nodes(self) -> Dict[str, Node]:
         return self.nodes
@@ -26,10 +26,16 @@ class Network:
     def get_edge(self, start_node_id: str, end_node_id: str) -> Edge:
         for edge in self.edges:
             if edge.get_start_node().get_id() == start_node_id \
-                    and edge.get_end_node().get_id == end_node_id:
+                    and edge.get_end_node().get_id() == end_node_id:
                 return edge
         raise ValueError('Edge does not exist!')
     
+    def get_graph(self) -> Dict[str, List[str]]:
+        return self.graph
+    
+    def get_regulators(self) -> Dict[str, List[str]]:
+        return self.regulators
+
     def get_edges(self) -> List[Edge]:
         return self.edges
     
@@ -37,13 +43,12 @@ class Network:
         return self.input_file_network
 
     def add_node(self, id: str) -> Node:
-        try:
-            return self.get_node(id)
-        except ValueError:
+        node = self.get_node(id)
+        if node is None:
             node = Node(id)
             self.nodes[id] = node
             self.graph[id] = []
-            return node
+        return node
 
     def add_edge(self, start_node: Node, end_node: Node, sign: int) -> None:
         try:
