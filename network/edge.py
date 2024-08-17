@@ -79,5 +79,5 @@ class Edge:
 #         self.assertFalse(self.edge.is_equal(edge_different_start, False))
 #         self.assertFalse(self.edge.is_equal(edge_different_end, False))
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

@@ -9,7 +9,6 @@ class Function:
         self.node_id = node_id
         self.distance_from_original = 0 # TODO what is this?
         self.son_consistent = False # TODO what is this?
-        self.pfh_function = None
         self.regulators = [] # ['node_1', 'node_2', 'node_3']
         self.regulators_by_term = {} # {1: ['node_1', 'node_2'], 2: ['node_1', 'node_3'], 3: ['node_3']}
 
@@ -74,7 +73,7 @@ class Function:
     def pfh_evaluate(self, signs: bitarray, values: bitarray) -> bool:
         return self.pfh_function.evaluate(signs, values)
 
-    def pfh_get_level(self) -> list[int]:
+    def pfh_get_level(self) -> List[int]:
         return self.pfh_function.get_level()
     
     def pfh_level_cmp(self, other: PFHFunction) -> int:
@@ -111,10 +110,10 @@ class Function:
     # def is_equal(self, function):
     #     return self.boolean_function.is_equal(function.get_boolean_function())
 
-    # def is_equal(self, function: Function) -> bool: # FIXME should it receive another Function or a PFH Function?
+    # def is_equal(self, function: Function) -> bool: # TODO should it receive another Function or a PFH Function?
         # return self.pfh_function == function.get_pfh_function()
     
-    # def is_equal(self, function: Function) -> bool: # FIXME should there be more comparison in place? or comparing just the pfh functions is enough?
+    # def is_equal(self, function: Function) -> bool: # TODO should there be more comparison in place? or comparing just the pfh functions is enough?
     #     return self.pfh_function == function.get_pfh_function()
 
     # def get_full_level(self): # level implemented on PFH side
@@ -126,7 +125,7 @@ class Function:
     # def print_function_full_level(self):
     #     print(self.boolean_function)
 
-    # def get_parents(self): # FIXME do we need to initialise the Hasse Diagram?
+    # def get_parents(self): # TODO do we need to initialise the Hasse Diagram?
     #     result = []
     #     parents = self.boolean_function.get_parents()
     #     for parent in parents:
@@ -135,7 +134,7 @@ class Function:
     #         result.append(function)
     #     return result
 
-    # def get_children(self): # FIXME do we need to initialise the Hasse Diagram?
+    # def get_children(self): # TODO do we need to initialise the Hasse Diagram?
     #     result = []
     #     children = self.boolean_function.get_children()
     #     for child in children:
@@ -215,5 +214,5 @@ class Function:
 #         self.assertEqual(len(replacements), 1)
 #         self.assertEqual(replacements[0].get_node(), 2)
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()

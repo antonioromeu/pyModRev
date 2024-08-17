@@ -1,18 +1,14 @@
+import clingo
+import sys
 from network.network import Network
+from network.inconsistency_solution import Inconsistency_Solution
+from configuration import configuration
 from utils import validate_input_name
-# from enum import Enum
-# import clingo
-# import os
-# import configuration
-
-# class UpdateType(Enum):
-#     ASYNC = 0
-#     SYNC = 1
-#     MASYNC = 2
+from typing import List
 
 class ASPHelper:
     @staticmethod
-    def parse_network(network: Network):
+    def parse_network(network: Network) -> int:
         result = 1
         try:
             with open(network.get_input_file_network(), 'r') as file:
@@ -28,12 +24,12 @@ class ASPHelper:
                                 predicates[i] = predicates[i][1:]
                             split = predicates[i].split('(')
                             
-                            if split[0] == "vertex":
+                            if split[0] == 'vertex':
                                 node = split[1].split(')')[0]
                                 network.add_node(node)
                                 continue
                             
-                            elif split[0] == "edge":
+                            elif split[0] == 'edge':
                                 split = split[1].split(')')
                                 split = split[0].split(',')
                                 
@@ -63,7 +59,7 @@ class ASPHelper:
                                 network.add_edge(start_node, end_node, sign)
                                 continue
 
-                            elif split[0] == "fixed":
+                            elif split[0] == 'fixed':
 
                                 split = split[1].split(')')
                                 split = split[0].split(',')
@@ -85,7 +81,7 @@ class ASPHelper:
                                     print(f'WARN!\tUnrecognized edge on line {count_line}: {predicates[i]} Ignoring...')
                                 continue
 
-                            elif split[0] == "functionOr":
+                            elif split[0] == 'functionOr':
                                 split = split[1].split(')')
                                 split = split[0].split(',')
 
@@ -101,7 +97,7 @@ class ASPHelper:
 
                                 network.add_node(split[0])
 
-                                if ".." in split[1]:
+                                if '..' in split[1]:
                                     split = split[1].split('.')
                                     try:
                                         range_limit = int(split[-1])
@@ -112,7 +108,7 @@ class ASPHelper:
                                         print(f'WARN!\tInvalid range limit: {range_limit} on line {count_line} in {predicates[i]}. It must be an integer greater than 0.')
                                         return -2
 
-                                else: # TODO for when functionOr(V,1), is this a self pointing edge? the node regulates itself?
+                                else:
                                     try:
                                         range_limit = int(split[1])
                                         if range_limit < 1:
@@ -123,7 +119,7 @@ class ASPHelper:
                                         return -2
                                 continue
 
-                            elif split[0] == "functionAnd":
+                            elif split[0] == 'functionAnd':
                                 split = split[1].split(')')
                                 split = split[0].split(',')
 
@@ -164,9 +160,115 @@ class ASPHelper:
         except IOError:
             raise ValueError('ERROR!\tCannot open file ' + network.get_input_file_network())
         return result
-    
-    def parse_cc_model(): # TODO which one should i start with? parse_cc_model or check_consistency?
-        return
 
-    def check_consistency():
-        return
+    @staticmethod
+    def check_consistency(network: Network, optimization: int, update: int) -> List[Inconsistency_Solution]:
+        result = []
+        try:
+            def logger(warning_code, message): # TODO what is this supposed to be?
+                if configuration['debug']:
+                    print(message, file=sys.stderr)
+
+            ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
+            ctl.load(configuration['asp_cc_base'])
+
+            if network.get_has_ss_obs():
+                ctl.load(configuration['asp_cc_ss'])
+                if configuration['check_consistency']:
+                    ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,0), 1{noneNegative(P,V,Id):functionOr(V,Id)}, vertex(V), ss(P), r_part(V).')
+                    ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,1), {noneNegative(P,V,Id):functionOr(V,Id)}0, vertex(V), ss(P), functionOr(V,_), r_gen(V).')
+                    ctl.add('base', [], '#show inc/2.')
+
+            if network.get_has_ts_obs():
+                ctl.load(configuration['asp_cc_d'])
+                if configuration['check_consistency']:
+                    ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), input(V), vlabel(P,T,V,0), exp(P), time(P,T+1), r_gen(V).')
+                    ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), input(V), vlabel(P,T,V,1), exp(P), time(P,T+1), r_part(V).')
+                    ctl.add('base', [], '#show inc/2.')
+                
+                if update == 'ASYNC':
+                    ctl.load(configuration['asp_cc_d_a'])
+                    if configuration['check_consistency']:
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T+1).')
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), update(P,T,V), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), not topologicalerror(V), time(P,T+1).')
+                        ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T1), time(P2,T2), T1 != T2, time(P1,T1+1), time(P2,T2+1), update(P1, T1, V), update(P2, T2, V), {vlabel(P1,T1,V1,S1) : vlabel(P2,T2,V1,S2), functionAnd(V,Id, V1), S1!=S2}0, vlabel(P1,T1+1,V,S3), vlabel(P2,T2+1,V,S4), S3 != S4, not input(V), P1 <= P2.')
+                        ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), update(P1, T, V), update(P2, T, V), P1 < P2, {vlabel(P1,T,V1,S1) : vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
+                        ctl.add('base', [], '#show incT/3.')
+                
+                elif update == 'SYNC':
+                    ctl.load(configuration['asp_cc_d_s'])
+                    if configuration['check_consistency']:
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T), time(P,T+1).')
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), not topologicalerror(V), time(P,T), time(P,T+1).')
+                        ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T1), time(P2,T2), T1 != T2, time(P1,T1+1), time(P2,T2+1), vertex(V), {vlabel(P1,T1,V1,S1): vlabel(P2,T2,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T1+1,V,S3), vlabel(P2,T2+1,V,S4), S3 != S4, not input(V), P1 <= P2.')
+                        ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), exp(P1), exp(P2), P1 < P2, vertex(V), {vlabel(P1,T,V1,S1): vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
+                        ctl.add('base', [], '#show incT/3.')
+                
+                elif update == 'MASYNC':
+                    ctl.load(configuration['asp_cc_d_ma'])
+                    if configuration['check_consistency']:
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), time(P,T)+1.')
+                        ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), update(P,T,V), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), time(P,T+1).')
+
+            ctl.load(network.get_input_file_network())
+            for obs_file in network.get_observation_files():
+                ctl.load(obs_file)
+
+            ctl.ground([('base', [])])
+            with ctl.solve(yield_=True) as handle:
+                if handle.get().satisfiable:
+                    for model in handle:
+                        if model and model.optimality_proven:
+                            result.append(ASPHelper.parse_cc_model(model, optimization))
+                else:
+                    optimization = -1
+        except Exception as e:
+            print(f'Failed to check consistency: {e}')
+        return result
+    
+    @staticmethod
+    def parse_cc_model(model: clingo.Model, optimization: int) -> Inconsistency_Solution:
+        inconsistency = Inconsistency_Solution()
+        count = 0
+        for atom in model.symbols(atoms=True): # TODO is this it?
+            name = atom.name # TODO what is this
+            args = atom.arguments # TODO what is this
+            
+            if name == 'vlabel':
+                if len(args) > 3:
+                    inconsistency.add_v_label(args[0], args[2], args[3], args[1])
+                else:
+                    inconsistency.add_v_label(args[0], args[1], args[2], 0)
+                continue
+
+            if name == 'r_gen':
+                inconsistency.add_generalization(args[0])
+                continue
+
+            if name == 'r_part':
+                inconsistency.add_particularization(args[0])
+                continue
+
+            if name == 'repair':
+                count += 1
+                continue
+
+            if name == 'update':
+                inconsistency.add_update(args[1], args[0], args[2])
+                continue
+
+            if name == 'topologicalerror':
+                inconsistency.add_topological_error(args[0])
+                continue
+
+            if name == 'inc':
+                inconsistency.add_inconsistent_profile(args[0], args[1])
+                continue
+
+            if name == 'incT':
+                inconsistency.add_inconsistent_profile(args[0], args[2])
+                inconsistency.add_inconsistent_profile(args[1], args[2])
+                continue
+        
+        optimization = count
+        return inconsistency
