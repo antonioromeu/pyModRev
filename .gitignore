@@ -5,3 +5,5 @@ ModRev
 pyfunctionhood
 examples
 .vscode
+test_pfh*
+*.toml

@@ -1,4 +1,3 @@
-import unittest
 from network.repair_set import Repair_Set
 from network.inconsistent_node import Inconsistent_Node
 from configuration import configuration
@@ -6,16 +5,16 @@ from typing import Dict
 
 class Inconsistency_Solution:
     def __init__(self):
-        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}  # TODO confirm with Filipe
-        self.v_label = {} # TODO what is this
-        self.updates = {} # TODO what is this
-        self.i_profiles = {} # TODO what is this
-        self.i_nodes_profiles = [] # TODO what is this
+        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}  # TODO conjuntos de nós minimo inconsistente de um solução
+        self.v_label = {} # TODO observaçoes completas preenchidas, se obs nao for completa o ASP preenche e devolve (ASP tenta todas as combinações)
+        self.updates = {} # TODO apenas para async, lista dos updates feitos para async em cada instante de tempo
+        self.i_profiles = {} # TODO quais das obs são inconsistentes e respetivos nós, usado quando processo é parado a meio
+        self.i_nodes_profiles = {} # TODO nós inconsistentes por obs
         self.n_topology_changes = 0
         self.n_ar_operations = 0
         self.n_e_operations = 0
         self.n_repair_operations = 0
-        self.has_impossibility = False
+        self.has_impossibility = False # impossibilidade de reparar solução
     
     def get_i_nodes(self) -> Dict[str, Inconsistent_Node]:
         return self.i_nodes
@@ -304,107 +303,24 @@ class Inconsistency_Solution:
                         print(f"\t\t\t\t{id} => {value}")
         print("}")
 
-    # def print_inconsistency(self, prefix): # TODO gives error in line 314
-    #     print(f"{prefix}\"nodes\": [", end="")
-    #     first = True
-    #     for i_node in self.i_nodes.values():
-    #         if first:
-    #             first = False
-    #         else:
-    #             print(",", end="")
-    #         print(f"\"{i_node.get_id().replace('"', '')}\"", end="")
-    #     print("],")
-    #     print(f"{prefix}\"profiles\": [", end="")
-    #     first = True
-    #     for i_profile in self.i_profiles.keys():
-    #         if first:
-    #             first = False
-    #         else:
-    #             print(",", end="")
-    #         print(f"\"{i_profile.replace('"', '')}\"", end="")
-    #     print("]")
-
-# class TestInconsistencySolution(unittest.TestCase):
-#     def setUp(self):
-#         self.solution = Inconsistency_Solution()
-
-#     def test_initial_values(self):
-#         self.assertEqual(self.solution.get_i_nodes(), {})
-#         self.assertEqual(self.solution.get_v_label(), {})
-#         self.assertEqual(self.solution.get_updates(), {})
-#         self.assertEqual(self.solution.get_i_profiles(), {})
-#         self.assertEqual(self.solution.get_i_nodes_profiles(), [])
-#         self.assertEqual(self.solution.get_n_topology_changes(), 0)
-#         self.assertEqual(self.solution.get_n_ar_operations(), 0)
-#         self.assertEqual(self.solution.get_n_e_operations(), 0)
-#         self.assertEqual(self.solution.get_n_repair_operations(), 0)
-#         self.assertFalse(self.solution.get_has_impossibility())
-
-#     def test_add_generalization(self):
-#         self.solution.add_generalization(1)
-#         self.assertIn(1, self.solution.get_i_nodes())
-#         self.assertTrue(self.solution.get_i_node(1).is_generalization)
-#         self.assertEqual(self.solution.get_i_node(1).get_repair_type(), 1)
-
-#     def test_add_particularization(self):
-#         self.solution.add_particularization(1)
-#         self.assertIn(1, self.solution.get_i_nodes())
-#         self.assertFalse(self.solution.get_i_node(1).is_generalization)
-#         self.assertEqual(self.solution.get_i_node(1).get_repair_type(), 2)
-
-#     def test_add_topological_error(self):
-#         self.solution.add_topological_error(1)
-#         self.assertIn(1, self.solution.get_i_nodes())
-#         self.assertTrue(self.solution.get_i_node(1).topological_error)
-
-#     def test_add_v_label(self):
-#         self.solution.add_v_label("profile1", 1, "value1", "time1")
-#         self.assertIn("profile1", self.solution.get_v_label())
-#         self.assertIn("time1", self.solution.get_v_label()["profile1"])
-#         self.assertIn(1, self.solution.get_v_label()["profile1"]["time1"])
-#         self.assertEqual(self.solution.get_v_label()["profile1"]["time1"][1], "value1")
-
-#     def test_add_update(self):
-#         self.solution.add_update("time1", "profile1", 1)
-#         self.assertIn("time1", self.solution.get_updates())
-#         self.assertIn("profile1", self.solution.get_updates()["time1"])
-#         self.assertIn(1, self.solution.get_updates()["time1"]["profile1"])
-
-#     def test_add_inconsistent_profile(self):
-#         self.solution.add_inconsistent_profile("profile1", 1)
-#         self.assertIn("profile1", self.solution.get_i_profiles())
-#         self.assertIn(1, self.solution.get_i_profiles()["profile1"])
-#         self.assertIn(1, self.solution.get_i_nodes_profiles())
-#         self.assertIn("profile1", self.solution.get_i_nodes_profiles()[1])
-
-#     def test_compare_repairs(self):
-#         other_solution = Inconsistency_Solution()
-#         other_solution.n_ar_operations = 5
-#         self.solution.n_ar_operations = 3
-#         self.assertEqual(self.solution.compare_repairs(other_solution), 1)
-
-#         other_solution.n_ar_operations = 3
-#         other_solution.n_e_operations = 5
-#         self.solution.n_e_operations = 3
-#         self.assertEqual(self.solution.compare_repairs(other_solution), 1)
-
-#         other_solution.n_e_operations = 3
-#         other_solution.n_repair_operations = 5
-#         self.solution.n_repair_operations = 3
-#         self.assertEqual(self.solution.compare_repairs(other_solution), 1)
-
-#         other_solution.n_repair_operations = 3
-#         self.assertEqual(self.solution.compare_repairs(other_solution), 0)
-
-#     def test_add_repair_set(self):
-#         repair_set = Repair_Set(1, 2, 3, 4)
-#         self.solution.add_generalization(1)
-#         self.solution.add_repair_set(1, repair_set)
-
-#         self.assertEqual(self.solution.get_n_topology_changes(), 1)
-#         self.assertEqual(self.solution.get_n_ar_operations(), 2)
-#         self.assertEqual(self.solution.get_n_e_operations(), 3)
-#         self.assertEqual(self.solution.get_n_repair_operations(), 4)
-
-# if __name__ == '__main__':
-#     unittest.main()
+    def print_inconsistency(self, prefix): # TODO gives error in line 314
+        print(f'{prefix}"nodes": [', end="")
+        first = True
+        for i_node in self.i_nodes.values():
+            if first:
+                first = False
+            else:
+                print(",", end="")
+            # print(f'"{i_node.get_id().replace('"', '')}"', end="")
+            print(i_node.get_id(), end="")
+        print("],")
+        print(f'{prefix}"profiles": [', end="")
+        first = True
+        for i_profile in self.i_profiles.keys():
+            if first:
+                first = False
+            else:
+                print(",", end="")
+            # print(f'"{i_profile.replace('"', '')}"', end="")
+            print(i_profile, end="")
+        print("]")

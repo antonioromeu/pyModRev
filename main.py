@@ -144,6 +144,22 @@ def check_consistency(optimization: int) -> List[Inconsistency_Solution]:
         pass
     return result
 
+def print_consistency(inconsistencies: List[Inconsistency_Solution], optimization: int) -> None:
+    print("{")
+    print(f'\t"consistent": {"true" if optimization == 0 else "false,"}')
+    if optimization != 0:
+        print('\t"inconsistencies": [')
+        first = True
+        for inconsistency in inconsistencies:
+            if not first:
+                print(",")
+            first = False
+            print("\t\t{")
+            inconsistency.print_inconsistency("\t\t\t")
+            print("\t\t}", end="")
+        print("\n\t]")
+    print("}")
+
 # Model revision procedure
 # 1 - tries to repair functions
 # 2 - tries to flip the sign of the edges
@@ -151,14 +167,14 @@ def check_consistency(optimization: int) -> List[Inconsistency_Solution]:
 def model_revision():
     optimization = -2
     f_inconsistencies = check_consistency(optimization)
-    # if Configuration.is_active("checkConsistency"):
-    #     print_consistency(f_inconsistencies, optimization)
-    #     return
+    if configuration["check_consistency"]:
+        print_consistency(f_inconsistencies, optimization)
+        return
 
-    # if optimization < 0:
-    #     print("ERROR: It is not possible to repair this network for now.")
-    #     print("This may occur if there is at least one node for which from the same input two different outputs are expected (non-deterministic function).")
-    #     return
+    if optimization < 0:
+        print("ERROR: It is not possible to repair this network for now.")
+        print("This may occur if there is at least one node for which from the same input two different outputs are expected (non-deterministic function).")
+        return
 
     # if optimization == 0:
     #     if verbose == 3:

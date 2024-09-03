@@ -1,4 +1,3 @@
-import unittest
 from network.repair_set import Repair_Set
 from typing import List
 
@@ -80,66 +79,3 @@ class Inconsistent_Node:
                 self.n_flip_edges_operations = repair_set.get_n_flip_edges_operations()
 
         self.repair_set.append(repair_set)
-
-# class TestInconsistentNode(unittest.TestCase):
-#     def setUp(self):
-#         self.node_generalization = Inconsistent_Node('node1', True)
-#         self.node_particularization = Inconsistent_Node('node2', False)
-
-#     def test_initial_values(self):
-#         self.assertEqual(self.node_generalization.get_id(), 'node1')
-#         self.assertTrue(self.node_generalization.get_generalization())
-#         self.assertEqual(self.node_generalization.get_repair_set(), [])
-#         self.assertEqual(self.node_generalization.get_n_topology_changes(), 0)
-#         self.assertEqual(self.node_generalization.get_n_repair_operations(), 0)
-#         self.assertEqual(self.node_generalization.get_n_add_remove_operations(), 0)
-#         self.assertEqual(self.node_generalization.get_n_flip_edges_operations(), 0)
-#         self.assertFalse(self.node_generalization.is_repaired())
-#         self.assertFalse(self.node_generalization.has_topological_error())
-#         self.assertEqual(self.node_generalization.get_repair_type(), 1)
-
-#         self.assertEqual(self.node_particularization.get_id(), 'node2')
-#         self.assertFalse(self.node_particularization.get_generalization())
-#         self.assertEqual(self.node_particularization.get_repair_type(), 2)
-
-#     def test_set_repair_type(self):
-#         self.node_generalization.set_repair_type(3)
-#         self.assertEqual(self.node_generalization.get_repair_type(), 3)
-
-#     def test_set_topological_error(self):
-#         self.node_generalization.set_topological_error(True)
-#         self.assertTrue(self.node_generalization.has_topological_error())
-
-#     def test_add_repair_set(self):
-#         repair_set1 = Repair_Set(1, 2, 3, 4)
-#         repair_set2 = Repair_Set(1, 1, 2, 3)  # Better repair set
-
-#         self.node_generalization.add_repair_set(repair_set1)
-#         self.assertTrue(self.node_generalization.is_repaired())
-#         self.assertEqual(self.node_generalization.get_n_topology_changes(), 1)
-#         self.assertEqual(self.node_generalization.get_n_repair_operations(), 2)
-#         self.assertEqual(self.node_generalization.get_n_add_remove_operations(), 3)
-#         self.assertEqual(self.node_generalization.get_n_flip_edges_operations(), 4)
-
-#         self.node_generalization.add_repair_set(repair_set2)
-#         self.assertEqual(self.node_generalization.get_n_topology_changes(), 1)
-#         self.assertEqual(self.node_generalization.get_n_repair_operations(), 1)
-#         self.assertEqual(self.node_generalization.get_n_add_remove_operations(), 2)
-#         self.assertEqual(self.node_generalization.get_n_flip_edges_operations(), 3)
-#         self.assertEqual(len(self.node_generalization.get_repair_set()), 1)
-
-#     def test_add_worse_repair_set(self):
-#         repair_set1 = Repair_Set(1, 2, 3, 4)
-#         repair_set2 = Repair_Set(1, 3, 4, 5)  # Worse repair set
-
-#         self.node_generalization.add_repair_set(repair_set1)
-#         self.node_generalization.add_repair_set(repair_set2)
-
-#         self.assertEqual(self.node_generalization.get_n_topology_changes(), 1)
-#         self.assertEqual(self.node_generalization.get_n_repair_operations(), 2)
-#         self.assertEqual(self.node_generalization.get_n_add_remove_operations(), 3)
-#         self.assertEqual(self.node_generalization.get_n_flip_edges_operations(), 4)
-#         self.assertEqual(len(self.node_generalization.get_repair_set()), 1)
-
-# if __name__ == '__main__':
-#     unittest.main()

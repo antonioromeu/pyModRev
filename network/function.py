@@ -1,16 +1,16 @@
-import unittest
+import bitarray
 from pyfunctionhood.function import Function as PFHFunction
 from pyfunctionhood.clause import Clause
 from typing import Set, Dict, List
-import bitarray
 
 class Function:
     def __init__(self, node_id: str) -> None:
         self.node_id = node_id
-        self.distance_from_original = 0 # TODO what is this?
-        self.son_consistent = False # TODO what is this?
+        self.distance_from_original = 0 # TODO distancia se for filho/pai da função original, sempre valor absoluto
+        self.son_consistent = False # TODO se a função já encontrou um filho consistente para nao expandir mais
         self.regulators = [] # ['node_1', 'node_2', 'node_3']
         self.regulators_by_term = {} # {1: ['node_1', 'node_2'], 2: ['node_1', 'node_3'], 3: ['node_3']}
+        self.pfh_function = None
 
     def get_node_id(self) -> str:
         return self.node_id
@@ -35,10 +35,13 @@ class Function:
             self.regulators.append(regulator)
         if term_id not in self.regulators_by_term.keys():
             self.regulators_by_term[term_id] = [regulator]
-        else:
+        elif regulator not in self.regulators_by_term[term_id]:
             self.regulators_by_term[term_id].append(regulator)
     
-    ##### PFH section #####
+    def is_equal(self, other) -> bool:
+        return self.get_pfh_function() == other.get_pfh_function()
+    
+    ##### pyfunctionhood wrapper #####
     
     def pfh_init(self, n_vars: int, clauses: Set[Clause]) -> None:
         self.pfh_function = PFHFunction(n_vars, clauses)
@@ -78,6 +81,9 @@ class Function:
     
     def pfh_level_cmp(self, other: PFHFunction) -> int:
         return self.pfh_function.level_cmp(other)
+
+    # def pfh_is_equal(self, other: PFHFunction) -> bool:
+    #     return self.pfh_function == other
     
     # def add_element_clause(self, clause: Clause) -> None:
     #     self.pfh_function.add_clause(clause)
@@ -106,9 +112,6 @@ class Function:
 
     # def print_function(self) -> None:
     #     print(self.pfh_function)
-
-    # def is_equal(self, function):
-    #     return self.boolean_function.is_equal(function.get_boolean_function())
 
     # def is_equal(self, function: Function) -> bool: # TODO should it receive another Function or a PFH Function?
         # return self.pfh_function == function.get_pfh_function()
@@ -147,72 +150,3 @@ class Function:
     #     if generalize:
     #         return self.get_parents()
     #     return self.get_children()
-
-# class TestFunction(unittest.TestCase):
-#     def setUp(self):
-#         self.function = Function(4, {Clause(1110), Clause(1011), Clause(0111)})
-#         self.other_function = Function(4, {Clause(1010), Clause(0110), Clause(1111)})
-
-#     def test_initialization_with_node(self):
-#         self.assertEqual(self.function.get_node(), 1)
-
-#     def test_initialization_with_function(self):
-#         boolean_function = PFHFunction(3)
-#         func = Function(function=boolean_function)
-#         self.assertEqual(func.get_node(), 3)
-
-#     def test_add_element_clause(self):
-#         # No assertion needed as add_variable_to_term is a stub
-#         self.function.add_element_clause(1, 2)
-
-#     def test_get_number_of_regulators(self):
-#         self.assertEqual(self.function.get_number_of_regulators(), 1)
-
-#     def test_get_regulators_map(self):
-#         self.assertEqual(self.function.get_regulators_map(), {1: [1]})
-
-#     def test_get_clauses(self):
-#         self.assertEqual(self.function.get_clauses(), [(1,)])
-
-#     def test_get_n_clauses(self):
-#         self.assertEqual(self.function.get_n_clauses(), 1)
-
-#     def test_print_function(self):
-#         self.assertEqual(self.function.print_function(), "Function of node 1")
-
-#     def test_is_equal(self):
-#         func_same = Function(node=1)
-#         self.assertTrue(self.function.is_equal(func_same))
-#         self.assertFalse(self.function.is_equal(self.other_function))
-
-#     def test_get_full_level(self):
-#         self.assertEqual(self.function.get_full_level(), 0)
-
-#     def test_compare_level(self):
-#         self.assertEqual(self.function.compare_level(0), 0)
-
-#     def test_print_function_full_level(self):
-#         self.assertEqual(self.function.print_function_full_level(), "Function level of node 1")
-
-#     def test_get_parents(self):
-#         parents = self.function.get_parents()
-#         self.assertEqual(len(parents), 1)
-#         self.assertEqual(parents[0].get_node(), 0)
-
-#     def test_get_children(self):
-#         children = self.function.get_children()
-#         self.assertEqual(len(children), 1)
-#         self.assertEqual(children[0].get_node(), 2)
-
-#     def test_get_replacements_generalize(self):
-#         replacements = self.function.get_replacements(generalize=True)
-#         self.assertEqual(len(replacements), 1)
-#         self.assertEqual(replacements[0].get_node(), 0)
-
-#     def test_get_replacements_not_generalize(self):
-#         replacements = self.function.get_replacements(generalize=False)
-#         self.assertEqual(len(replacements), 1)
-#         self.assertEqual(replacements[0].get_node(), 2)
-
-# if __name__ == '__main__':
-#     unittest.main()
