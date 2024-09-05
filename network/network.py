@@ -74,6 +74,16 @@ class Network:
             else:
                 self.regulators[edge.get_end_node().get_id()].append(edge.get_start_node().get_id())
             # return edge
+    
+    def remove_edge(self, start_node: Node, end_node: Node) -> None:
+        try:
+            edge_to_remove = self.get_edge(start_node.get_id(), end_node.get_id()) # Find the edge to remove
+            self.graph[start_node.get_id()].remove(edge_to_remove) # Remove the edge from the graph
+            self.regulators[end_node.get_id()].remove(start_node.get_id()) # Remove the start_node from the list of regulators for the end_node
+            if not self.regulators[end_node.get_id()]:  # If there are no more regulators for the end_node, remove the key from the regulators dictionary
+                del self.regulators[end_node.get_id()]
+        except ValueError:
+            print(f"No edge exists between {start_node.get_id()} and {end_node.get_id()}")
 
     # def add_edge(self, edge: Edge) -> None:
     #     if edge.get_start_node().get_id() in self.graph.keys() and \

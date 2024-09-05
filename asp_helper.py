@@ -4,7 +4,7 @@ from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
 from configuration import configuration
 from utils import validate_input_name
-from typing import List
+from typing import List, Tuple
 
 class ASPHelper:
     @staticmethod
@@ -162,8 +162,9 @@ class ASPHelper:
         return result
 
     @staticmethod
-    def check_consistency(network: Network, optimization: int, update: int) -> List[Inconsistency_Solution]:
+    def check_consistency(network: Network, update: int) -> Tuple[List[Inconsistency_Solution], int]: #optimization: int, update: int): #-> List[Inconsistency_Solution]:
         result = []
+        optimization = -2
         try:
             def logger(warning_code, message): # TODO what is this supposed to be?
                 if configuration['debug']:
@@ -174,7 +175,7 @@ class ASPHelper:
             # filer = pkg_resources.resource_string(__name__, "asp/file.pl").decode()
             if network.get_has_ss_obs():
                 ctl.load(configuration['asp_cc_ss'])
-                if configuration['check_consistency']: # 
+                if configuration['check_consistency']:
                     ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,0), 1{noneNegative(P,V,Id):functionOr(V,Id)}, vertex(V), ss(P), r_part(V).')
                     ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,1), {noneNegative(P,V,Id):functionOr(V,Id)}0, vertex(V), ss(P), functionOr(V,_), r_gen(V).')
                     ctl.add('base', [], '#show inc/2.')
@@ -219,15 +220,19 @@ class ASPHelper:
                 if handle.get().satisfiable:
                     for model in handle:
                         if model and model.optimality_proven:
-                            result.append(ASPHelper.parse_cc_model(model, optimization))
+                            res, opt = ASPHelper.parse_cc_model(model) #, optimization)
+                            result.append(res)
+                            optimization = opt
+                            # result.append(ASPHelper.parse_cc_model(model, optimization))
                 else:
                     optimization = -1
         except Exception as e:
             print(f'Failed to check consistency: {e}')
-        return result
+        # return result
+        return result, optimization
     
     @staticmethod
-    def parse_cc_model(model: clingo.Model, optimization: int) -> Inconsistency_Solution:
+    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution, int]: #, optimization: int): #-> Inconsistency_Solution:
         inconsistency = Inconsistency_Solution()
         count = 0
         for atom in model.symbols(atoms=True):
@@ -268,6 +273,6 @@ class ASPHelper:
                 inconsistency.add_inconsistent_profile(str(args[0]), str(args[2]))
                 inconsistency.add_inconsistent_profile(str(args[1]), str(args[2]))
                 continue
-        
-        optimization = count
-        return inconsistency
+        # optimization = count
+        # return inconsistency
+        return inconsistency, count
