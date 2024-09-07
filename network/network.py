@@ -84,33 +84,6 @@ class Network:
                 del self.regulators[end_node.get_id()]
         except ValueError:
             print(f"No edge exists between {start_node.get_id()} and {end_node.get_id()}")
-
-    # def add_edge(self, edge: Edge) -> None:
-    #     if edge.get_start_node().get_id() in self.graph.keys() and \
-    #         edge.get_end_node().get_id() in self.graph[edge.get_start_node().get_id()]:
-    #         raise ValueError('Edge already exists!')
-    #     self.edges.append(edge)
-    #     self.graph[edge.get_start_node().get_id()].append(edge.get_end_node().get_id())
-    #     self.regulators[edge.get_end_node().get_id()].append(edge.get_start_node().get_id())
-        # return edge
-
-    # def remove_edge(self, start_node_id: str, end_node_id: str) -> None: # TODO does it make sense to have remove_edge?
-    #     self.graph[start_node_id].remove(end_node_id)
-    #     self.regulators[end_node_id].remove(start_node_id)
-    #     for i, edge in enumerate(self.edges):
-    #         if edge.get_start_node().get_id() == start_node_id and \
-    #                 edge.get_end_node().get_id() == end_node_id:
-    #             del self.edges[i]
-    #             return
-
-    # def remove_edge(self, edge_to_remove: Edge) -> None: # TODO does it make sense to have remove_edge?
-    #     self.graph[edge_to_remove.get_start_node().get_id()].remove(edge_to_remove.get_end_node().get_id())
-    #     self.regulators[edge_to_remove.get_end_node().get_id()].remove(edge_to_remove.get_start_node().get_id())
-    #     for i, edge in enumerate(self.edges):
-    #         if edge.get_start_node().get_id() == edge_to_remove.get_start_node().get_id() and \
-    #                 edge.get_end_node().get_id() == edge_to_remove.get_end_node().get_id():
-    #             del self.edges[i]
-    #             return
     
     def set_has_ss_obs(self, has_ss_obs: bool) -> None:
         self.has_ss_obs = has_ss_obs

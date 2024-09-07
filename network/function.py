@@ -6,8 +6,8 @@ from typing import Set, Dict, List
 class Function:
     def __init__(self, node_id: str) -> None:
         self.node_id = node_id
-        self.distance_from_original = 0 # TODO distancia se for filho/pai da função original, sempre valor absoluto
-        self.son_consistent = False # TODO se a função já encontrou um filho consistente para nao expandir mais
+        self.distance_from_original = 0 # Distance between son/father of the original function in absilute value
+        self.son_consistent = False # Function already found a consistent son (no need to expand further)
         self.regulators = [] # ['node_1', 'node_2', 'node_3']
         self.regulators_by_term = {} # {1: ['node_1', 'node_2'], 2: ['node_1', 'node_3'], 3: ['node_3']}
         self.pfh_function = None
@@ -24,8 +24,17 @@ class Function:
     def get_pfh_function(self) -> PFHFunction:
         return self.pfh_function
     
+    def get_clauses(self) -> Set[Clause]:
+        return self.pfh_get_clauses()
+    
+    def get_n_clauses(self) -> int:
+        return self.pfh_get_n_clauses()
+    
     def get_regulators(self) -> List[str]:
         return self.regulators
+
+    def get_n_regulators(self) -> int:
+        return len(self.regulators)
     
     def get_regulators_by_term(self) -> Dict[int, List[str]]:
         return self.regulators_by_term
@@ -38,8 +47,23 @@ class Function:
         elif regulator not in self.regulators_by_term[term_id]:
             self.regulators_by_term[term_id].append(regulator)
     
+    def print_function(self) -> None:
+        print(self.pfh_function)
+
+    # def print_function_full_level(self):
+    #     print(self.boolean_function)
+    
     def is_equal(self, other) -> bool:
         return self.get_pfh_function() == other.get_pfh_function()
+    
+    def compare_level(self, other) -> int:
+        return self.pfh_level_cmp(other.get_pfh_function())
+    
+    def add_clause(self, clause: Clause) -> None:
+        self.pfh_function.add_clause(clause)
+    
+    # def pfh_is_equal(self, other: PFHFunction) -> bool:
+    #     return self.pfh_function == other
     
     ##### pyfunctionhood wrapper #####
     
@@ -60,6 +84,9 @@ class Function:
 
     def pfh_get_clauses(self) -> Set[Clause]:
         return self.pfh_function.get_clauses()
+    
+    def pfh_get_n_clauses(self) -> int:
+        return len(self.pfh_function.get_clauses())
 
     def pfh_is_consistent(self) -> bool:
         return self.pfh_function.is_consistent()
@@ -82,51 +109,8 @@ class Function:
     def pfh_level_cmp(self, other: PFHFunction) -> int:
         return self.pfh_function.level_cmp(other)
 
-    # def pfh_is_equal(self, other: PFHFunction) -> bool:
-    #     return self.pfh_function == other
-    
-    # def add_element_clause(self, clause: Clause) -> None:
-    #     self.pfh_function.add_clause(clause)
-    
-    # def add_variable_to_term(self, term_id: int, variable: str) -> None:
-    #     if term_id in self.variable_map_by_id.keys():
-    #         self.variable_map_by_id[term_id].append(variable)
-    #     else:
-    #         self.n_terms += 1 # could just be len(variable_map_by_id.keys())
-    #         self.variable_map_by_id[term_id] = [variable]
-
-    # def get_pfh_function(self) -> PFHFunction:
-    #     return self.pfh_function
-
-    # def get_number_of_regulators(self) -> int:
-    #     return self.pfh_function.get_size()
-
-    # def get_clauses(self):
-    #     return self.boolean_function.get_terms()
-
-    # def get_n_clauses(self):
-    #     return self.boolean_function.get_n_terms()
-    
-    # def get_n_clauses(self) -> int:
-    #     return len(self.pfh_function.get_clauses())
-
-    # def print_function(self) -> None:
-    #     print(self.pfh_function)
-
-    # def is_equal(self, function: Function) -> bool: # TODO should it receive another Function or a PFH Function?
+    # def is_equal(self, function: Function) -> bool: # TODO should it receive another Function or a PFH Function? should there be more comparison in place? or comparing just the pfh functions is enough?
         # return self.pfh_function == function.get_pfh_function()
-    
-    # def is_equal(self, function: Function) -> bool: # TODO should there be more comparison in place? or comparing just the pfh functions is enough?
-    #     return self.pfh_function == function.get_pfh_function()
-
-    # def get_full_level(self): # level implemented on PFH side
-    #     return self.boolean_function.get_level()
-
-    # def compare_level(self, other_level): # level implemented on PFH side
-    #     return self.boolean_function.compare_level(other_level)
-
-    # def print_function_full_level(self):
-    #     print(self.boolean_function)
 
     # def get_parents(self): # TODO do we need to initialise the Hasse Diagram?
     #     result = []

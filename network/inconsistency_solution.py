@@ -9,7 +9,7 @@ class Inconsistency_Solution:
         self.v_label = {} # TODO observaçoes completas preenchidas, se obs nao for completa o ASP preenche e devolve (ASP tenta todas as combinações)
         self.updates = {} # TODO apenas para async, lista dos updates feitos para async em cada instante de tempo
         self.i_profiles = {} # TODO quais das obs são inconsistentes e respetivos nós, usado quando processo é parado a meio
-        self.i_nodes_profiles = {} # TODO nós inconsistentes por obs
+        self.i_nodes_profiles = {} # Inconsistent nodes by observation
         self.n_topology_changes = 0
         self.n_ar_operations = 0
         self.n_e_operations = 0
@@ -48,6 +48,9 @@ class Inconsistency_Solution:
 
     def get_has_impossibility(self) -> bool:
         return self.has_impossibility
+    
+    def set_impossibility(self, impossibility: bool) -> None:
+        self.has_impossibility = impossibility
     
     # Returns
     # -1 if provided solution is better than current solution

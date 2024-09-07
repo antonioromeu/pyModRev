@@ -77,5 +77,4 @@ class Inconsistent_Node:
                 self.n_repair_operations = repair_set.get_n_repair_operations()
                 self.n_add_remove_operations = repair_set.get_n_add_remove_operations()
                 self.n_flip_edges_operations = repair_set.get_n_flip_edges_operations()
-
         self.repair_set.append(repair_set)
