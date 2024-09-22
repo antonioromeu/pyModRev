@@ -255,6 +255,9 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                             new_function.add_regulator_to_term(clause_id, edge.get_start_node().get_id()) # TODO try using add_regulator_to_term and only when needed add the clause
                             clause_id += 1
 
+                        # TODO does this makes sense? only creating the PFH function if the new function has regulators?
+                        if len(new_function.get_regulators()):
+                            new_function.create_pfh_function()
                         original_node.add_function(new_function)
                     
                     # Test with edge flips starting with 0 edge flips
@@ -283,15 +286,15 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
         print(f"WARN: Not possible to repair node {inconsistent_node.get_id()}")
 
 def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
-    f = network.get_node(inconsistent_node.get_id()).get_function()
+    function = network.get_node(inconsistent_node.get_id()).get_function()
 
-    edge_map = f.get_regulators_map() if f is not None else {}
+    regulators = function.get_regulators() if function is not None else {}
     list_edges = []
 
-    for regulator_id in edge_map.keys():
-        e = network.get_edge(regulator_id, f.get_node())
-        if e is not None and not e.is_fixed():
-            list_edges.append(e)
+    for regulator in regulators:
+        edge = network.get_edge(regulator, function.get_node_id())
+        if edge is not None and not edge.get_fixed():
+            list_edges.append(edge)
 
     if configuration["debug"]:
         print(f"DEBUG: searching solution flipping edges for {inconsistent_node.get_id()}")
@@ -307,10 +310,10 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
         if configuration["debug"]:
             print(f"DEBUG: testing with {n_edges} edge flips")
 
-        e_candidates = get_edges_combinations(list_edges, n_edges)
+        edges_candidates = get_edges_combinations(list_edges, n_edges)
 
         # For each set of flipping edges
-        for edge_set in e_candidates:
+        for edge_set in edges_candidates:
             # Flip all edges
             for edge in edge_set:
                 edge.flip_sign()
@@ -422,7 +425,7 @@ def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: F
     
     # Verify for each profile
     for key, _ in labeling.get_v_label().items():
-        ret = n_func_inconsistent_with_label(labeling, function, key)
+        ret = n_func_inconsistent_with_label_with_profile(labeling, function, key)
         
         if configuration["debug"]:
             print(f"DEBUG: consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
@@ -435,7 +438,7 @@ def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: F
                 break
     return result
 
-def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: Function, profile: str) -> int:
+def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution, function: Function, profile: str) -> int:
     if configuration["debug"]:
         print(f"\n###DEBUG: checking consistency of function: {function.print_function()} of node {function.get_node_id()}\n")
 
@@ -461,7 +464,8 @@ def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: F
                 continue
 
         found_sat = False
-        n_clauses = function.get_n_clauses()
+        return
+        # n_clauses = function.get_n_clauses() # TODO how does function already have clauses?
 
         for i in range(1, n_clauses + 1):
             is_clause_satisfiable = True
@@ -541,13 +545,13 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
     # Get the replacement candidates
     function_repaired = False
     repaired_function_level = -1
-    t_candidates = original_f.get_replacements(generalize) # TODO
+    t_candidates = original_f.pfh_get_replacements(generalize)
 
     while t_candidates:
         candidate_sol = False
         candidate = t_candidates.pop(0)
 
-        if function_repaired and candidate.distance_from_original_ > repaired_function_level:
+        if function_repaired and candidate.get_distance_from_original() > repaired_function_level:
             continue
 
         if is_func_consistent_with_label(inconsistency, candidate):

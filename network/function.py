@@ -1,7 +1,8 @@
-import bitarray
+from bitarray import bitarray
 from pyfunctionhood.function import Function as PFHFunction
 from pyfunctionhood.clause import Clause
-from typing import Set, Dict, List
+from pyfunctionhood.hassediagram import HasseDiagram
+from typing import Set, Dict, List, Tuple
 
 class Function:
     def __init__(self, node_id: str) -> None:
@@ -60,10 +61,39 @@ class Function:
         return self.pfh_level_cmp(other.get_pfh_function())
     
     def add_clause(self, clause: Clause) -> None:
-        self.pfh_function.add_clause(clause)
+        self.pfh_function.pfh_add_clause(clause)
     
-    # def pfh_is_equal(self, other: PFHFunction) -> bool:
-    #     return self.pfh_function == other
+    def create_pfh_function(self) -> None:
+        n_vars = len(self.regulators)
+        clauses = self.create_bitarrays()
+        initialised_clauses = set()
+        for clause in clauses:
+            initialised_clause = Clause(clause, len(clause))
+            initialised_clauses.add(initialised_clause)
+        self.pfh_init(n_vars, initialised_clauses)
+
+    def create_bitarrays(self) -> List:
+        # Create an empty list to store bitarrays for each clause
+        clause_bitarrays = []
+        
+        # Iterate over each clause
+        for clause_id, clause_regulators in self.regulators_by_term.items():
+            # Create a bitarray initialized to 0 with a length equal to the number of regulators
+            bit_arr = bitarray(len(self.regulators))
+            bit_arr.setall(0)  # Initialize all bits to 0
+            
+            # For each regulator in the clause, set the corresponding index to 1
+            for regulator in clause_regulators:
+                if regulator in self.regulators:
+                    idx = self.regulators.index(regulator)
+                    bit_arr[idx] = 1
+            
+            # Append the bitarray to the list
+            clause_bitarrays.append(bit_arr)
+        
+        # for i, b in enumerate(clause_bitarrays):
+        #     print(f"Clause {i+1}: {b}")
+        return clause_bitarrays
     
     ##### pyfunctionhood wrapper #####
     
@@ -109,28 +139,42 @@ class Function:
     def pfh_level_cmp(self, other: PFHFunction) -> int:
         return self.pfh_function.level_cmp(other)
 
-    # def is_equal(self, function: Function) -> bool: # TODO should it receive another Function or a PFH Function? should there be more comparison in place? or comparing just the pfh functions is enough?
-        # return self.pfh_function == function.get_pfh_function()
+    # TODO should it receive another Function or a PFH Function? should there be more comparison in place? or comparing just the pfh functions is enough?
+    # def is_equal(self, function: Function) -> bool:
+    #     return self.pfh_function == function.get_pfh_function()
+    
+    # def pfh_is_equal(self, other: PFHFunction) -> bool:
+    #     return self.pfh_function == other
+    
+    def pfh_get_replacements(self, generalize: bool) -> List:
+        if generalize:
+            return self.pfh_get_parents()
+        return self.pfh_get_children()
 
-    # def get_parents(self): # TODO do we need to initialise the Hasse Diagram?
-    #     result = []
-    #     parents = self.boolean_function.get_parents()
-    #     for parent in parents:
-    #         function = Function(function=parent)
-    #         function.distance_from_original = self.distance_from_original + 1
-    #         result.append(function)
-    #     return result
+    def pfh_get_parents(self) -> Tuple[Set['Function'], Set['Function'], Set['Function']]:
+        hd = HasseDiagram(self.pfh_function.get_size())
+        s1, s2, s3 = hd.get_f_parents(self.pfh_function)
+        return
 
-    # def get_children(self): # TODO do we need to initialise the Hasse Diagram?
-    #     result = []
-    #     children = self.boolean_function.get_children()
-    #     for child in children:
-    #         function = Function(function=child)
-    #         function.distance_from_original = self.distance_from_original + 1
-    #         result.append(function)
-    #     return result
+        # parents = self.boolean_function.get_parents()
+        # for parent in parents:
+        #     function = Function(function=parent)
+        #     function.distance_from_original = self.distance_from_original + 1
+        #     result.append(function)
+        # return result
 
-    # def get_replacements(self, generalize):
-    #     if generalize:
-    #         return self.get_parents()
-    #     return self.get_children()
+    def pfh_get_children(self) -> Tuple[Set['Function'], Set['Function'], Set['Function']]:
+        hd = HasseDiagram(self.pfh_function.get_size())
+        s1, s2, s3 = hd.get_f_children(self.pfh_function)
+        # HERE
+        print(s1)
+        print(s2)
+        print(s3)
+        return
+        
+        # children = self.boolean_function.get_children()
+        # for child in children:
+        #     function = Function(function=child)
+        #     function.distance_from_original = self.distance_from_original + 1
+        #     result.append(function)
+        # return result
