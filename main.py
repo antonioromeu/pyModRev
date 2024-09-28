@@ -348,7 +348,7 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
 def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     sol_found = False
     repair_type = inconsistent_node.get_repair_type()
-
+    
     # If any topological operation was performed, validate if the model became consistent
     if flipped_edges or added_edges or removed_edges:
         repair_type = n_func_inconsistent_with_label(inconsistency, network.get_node(inconsistent_node.get_id()).get_function())
@@ -414,7 +414,6 @@ def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inc
 
         # Case of single inconsistency
         sol_found = search_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges, repair_type == Inconsistencies.SINGLE_INC_GEN)
-
         if configuration["debug"]:
             print(f"DEBUG: end searching for comparable functions for node {inconsistent_node.get_id()}")
 
@@ -464,14 +463,17 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
                 continue
 
         found_sat = False
-        return
-        # n_clauses = function.get_n_clauses() # TODO how does function already have clauses?
-
+        n_clauses = function.get_n_clauses() # FIXME how does function already have clauses? should PFH func be initialised? update: i think this is working
+        
         for i in range(1, n_clauses + 1):
             is_clause_satisfiable = True
-            clause = function.get_clauses()[i]
+            clauses = function.get_clauses()
 
-            for var in clause:
+            for clause in clauses:
+                print(function.bitarray_to_regulators(clause)) # HERE trying to convert the clause to the vars and iterate them to create edges
+                print('clause')
+                print(clause)
+                var = None
                 edge = network.get_edge(var, function.get_node_id())
                 if edge is not None:
                     # Positive interaction
@@ -526,17 +528,17 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
         time += 1
     return result
 
-def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge], generalize: bool): # TODO
+def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge], generalize: bool):
     sol_found = False
-
+    
     # Get the original function of the inconsistent node
     original_f = network.get_node(inconsistent_node.get_id()).get_function()
     if original_f is None:
         print(f"WARN: Inconsistent node {inconsistent_node.get_id()} without regulatory function.")
         inconsistency.set_impossibility(True)
         return False
-
-    if original_f.get_n_regulators() < 2:
+    
+    if original_f.get_n_regulators() < 2: # TODO why does it return false if n_regulators is < 2?
         return False
 
     if configuration["debug"]:
@@ -545,7 +547,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
     # Get the replacement candidates
     function_repaired = False
     repaired_function_level = -1
-    t_candidates = original_f.pfh_get_replacements(generalize)
+    t_candidates = original_f.pfh_get_replacements(generalize) # FIXME
 
     while t_candidates:
         candidate_sol = False
@@ -782,7 +784,7 @@ def is_func_consistent_with_label(labeling: Inconsistency_Solution, function: Fu
 
             for i in range(1, n_clauses + 1):
                 is_clause_satisfiable = True
-                clause = function.get_clauses()[i]
+                clause = list(function.get_clauses())[i] # FIXME set is not subscriptable, should it really be a set?
 
                 for item in clause:
                     edge = network.get_edge(item, function.get_node_id())
@@ -928,37 +930,36 @@ def model_revision():
         repair_inconsistencies(inconsistency)
 
         # Check for valid solution
-        # if not inconsistency.get_has_impossibility():
-        #     if best_solution is None or inconsistency.compare_repairs(best_solution) > 0:
-        #         best_solution = inconsistency
-        #         if configuration["debug"]:
-        #             print(f"DEBUG: found solution with {best_solution.get_n_topology_changes()} topology changes.")
-        #         if best_solution.get_n_topology_changes() == 0 and not configuration["all_opt"]:
-        #             break
-        # else:
-        #     if configuration["debug"]:
-        #         print("DEBUG: Reached an impossibility")
+        if not inconsistency.get_has_impossibility():
+            if best_solution is None or inconsistency.compare_repairs(best_solution) > 0:
+                best_solution = inconsistency
+                if configuration["debug"]:
+                    print(f"DEBUG: found solution with {best_solution.get_n_topology_changes()} topology changes.")
+                if best_solution.get_n_topology_changes() == 0 and not configuration["all_opt"]:
+                    break
+        else:
+            if configuration["debug"]:
+                print("DEBUG: Reached an impossibility")
 
-    # if best_solution is None:
-    #     print("### It was not possible to repair the model.")
-    #     return
+    if best_solution is None:
+        print("### It was not possible to repair the model.")
+        return
 
-    # show_sub_opt = configuration["show_solution_for_each_inconsistency")
+    show_sub_opt = configuration["show_solution_for_each_inconsistency"]
 
-    # if configuration["all_opt"]:
-    #     # TODO: remove duplicates
-    #     for inconsistency in f_inconsistencies:
-    #         if configuration["debug"]:
-    #             print(f"DEBUG: checking for printing solution with {inconsistency.get_n_topology_changes()} topology changes")
-    #         if not inconsistency.get_has_impossibility() and (inconsistency.compare_repairs(best_solution) >= 0 or show_sub_opt):
-    #             if show_sub_opt and inconsistency.compare_repairs(best_solution) < 0:
-    #                 if verbose < 2:
-    #                     print("+", end="")
-    #                 else:
-    #                     print("(Sub-Optimal Solution)")
-    #             inconsistency.print_solution(verbose)
-    # else:
-    #     best_solution.print_solution(verbose)
+    if configuration["all_opt"]:
+        for inconsistency in f_inconsistencies:
+            if configuration["debug"]:
+                print(f"DEBUG: checking for printing solution with {inconsistency.get_n_topology_changes()} topology changes")
+            if not inconsistency.get_has_impossibility() and (inconsistency.compare_repairs(best_solution) >= 0 or show_sub_opt):
+                if show_sub_opt and inconsistency.compare_repairs(best_solution) < 0:
+                    if verbose < 2:
+                        print("+", end="")
+                    else:
+                        print("(Sub-Optimal Solution)")
+                inconsistency.print_solution(verbose, True)
+    else:
+        best_solution.print_solution(verbose, True)
 
 if __name__ == '__main__':
     network = Network() # Creating a new Network instance

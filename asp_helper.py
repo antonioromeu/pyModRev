@@ -162,17 +162,18 @@ class ASPHelper:
         return result
 
     @staticmethod
-    def check_consistency(network: Network, update: int) -> Tuple[List[Inconsistency_Solution], int]: #optimization: int, update: int): #-> List[Inconsistency_Solution]:
+    def check_consistency(network: Network, update: int) -> Tuple[List[Inconsistency_Solution], int]:
         result = []
         optimization = -2
         try:
-            def logger(warning_code, message): # TODO what is this supposed to be?
+            def logger(warning_code, message):
                 if configuration['debug']:
+                    print(warning_code, file=sys.stderr)
                     print(message, file=sys.stderr)
 
             ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
             ctl.load(configuration['asp_cc_base'])
-            # filer = pkg_resources.resource_string(__name__, "asp/file.pl").decode()
+            # TODO filer = pkg_resources.resource_string(__name__, "asp/file.pl").decode()
             if network.get_has_ss_obs():
                 ctl.load(configuration['asp_cc_ss'])
                 if configuration['check_consistency']:
@@ -220,19 +221,17 @@ class ASPHelper:
                 if handle.get().satisfiable:
                     for model in handle:
                         if model and model.optimality_proven:
-                            res, opt = ASPHelper.parse_cc_model(model) #, optimization)
+                            res, opt = ASPHelper.parse_cc_model(model)
                             result.append(res)
                             optimization = opt
-                            # result.append(ASPHelper.parse_cc_model(model, optimization))
                 else:
                     optimization = -1
         except Exception as e:
             print(f'Failed to check consistency: {e}')
-        # return result
         return result, optimization
     
     @staticmethod
-    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution, int]: #, optimization: int): #-> Inconsistency_Solution:
+    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution, int]:
         inconsistency = Inconsistency_Solution()
         count = 0
         for atom in model.symbols(atoms=True):
@@ -251,7 +250,7 @@ class ASPHelper:
 
             if name == 'r_part':
                 inconsistency.add_particularization(str(args[0]))
-                # continue # TODO understand why C++ version doesn't have continue
+                # continue # FIXME why doesn't it have continue like other IFs
 
             if name == 'repair':
                 count += 1
@@ -273,6 +272,4 @@ class ASPHelper:
                 inconsistency.add_inconsistent_profile(str(args[0]), str(args[2]))
                 inconsistency.add_inconsistent_profile(str(args[1]), str(args[2]))
                 continue
-        # optimization = count
-        # return inconsistency
         return inconsistency, count

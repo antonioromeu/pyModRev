@@ -23,7 +23,7 @@ update = UpdateType.ASYNC # Setting the update type to ASYNC
 
 # Default known values
 configuration = {
-    'debug': False,
+    'debug': True,
     'check_asp': True, # Use ASP consistency check program
     'function_asp': True, # Use ASP function program
     'all_opt': True, # Show one or more solutions
@@ -34,6 +34,7 @@ configuration = {
     'force_optimum': False,
     'show_solution_for_each_inconsistency': False, # Show best solution for each consistency check solution even if it is not globally optimum
     'check_consistency': False, # Just check the consistency of the model and return
+    'labelling': True,
     'asp_cc_base': './asp/base.lp',
     'asp_cc_ss': './asp/stable_state/core_ss.lp',
     'asp_cc_d': './asp/dynamic/core_ts.lp',

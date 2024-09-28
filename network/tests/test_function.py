@@ -46,7 +46,6 @@ class TestFunction(unittest.TestCase):
 
     # def test_is_equal(self): # TODO
 
-
     # def test_get_parents(self):
     #     parents = self.function.get_parents()
     #     self.assertEqual(len(parents), 1)

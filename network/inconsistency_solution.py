@@ -5,16 +5,16 @@ from typing import Dict
 
 class Inconsistency_Solution:
     def __init__(self):
-        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}  # TODO conjuntos de nós minimo inconsistente de um solução
-        self.v_label = {} # TODO observaçoes completas preenchidas, se obs nao for completa o ASP preenche e devolve (ASP tenta todas as combinações)
-        self.updates = {} # TODO apenas para async, lista dos updates feitos para async em cada instante de tempo
-        self.i_profiles = {} # TODO quais das obs são inconsistentes e respetivos nós, usado quando processo é parado a meio
+        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}  # Minimum inconsistent node sets of a solution
+        self.v_label = {} # Completed observations that are filled in; if an observation is not complete, ASP fills it in and returns it (ASP tries all combinations)
+        self.updates = {} # Only for async, list of updates made for async at each point in time
+        self.i_profiles = {} # Which of the observations are inconsistent and the respective nodes, used when the process is stopped midway
         self.i_nodes_profiles = {} # Inconsistent nodes by observation
         self.n_topology_changes = 0
         self.n_ar_operations = 0
         self.n_e_operations = 0
         self.n_repair_operations = 0
-        self.has_impossibility = False # impossibilidade de reparar solução
+        self.has_impossibility = False # Solution is impossible to repair
     
     def get_i_nodes(self) -> Dict[str, Inconsistent_Node]:
         return self.i_nodes
@@ -306,7 +306,7 @@ class Inconsistency_Solution:
                         print(f"\t\t\t\t{id} => {value}")
         print("}")
 
-    def print_inconsistency(self, prefix): # TODO gives error in line 314
+    def print_inconsistency(self, prefix):
         print(f'{prefix}"nodes": [', end="")
         first = True
         for i_node in self.i_nodes.values():
@@ -314,7 +314,7 @@ class Inconsistency_Solution:
                 first = False
             else:
                 print(",", end="")
-            # print(f'"{i_node.get_id().replace('"', '')}"', end="")
+            print(f'"{i_node.get_id().replace(chr(34), "")}"', end="")
             print(i_node.get_id(), end="")
         print("],")
         print(f'{prefix}"profiles": [', end="")

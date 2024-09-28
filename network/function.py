@@ -29,6 +29,8 @@ class Function:
         return self.pfh_get_clauses()
     
     def get_n_clauses(self) -> int:
+        if self.pfh_function is None:
+            return 0
         return self.pfh_get_n_clauses()
     
     def get_regulators(self) -> List[str]:
@@ -50,9 +52,12 @@ class Function:
     
     def print_function(self) -> None:
         print(self.pfh_function)
-
-    # def print_function_full_level(self):
-    #     print(self.boolean_function)
+    
+    def print_level(self):
+        print(self.get_level())
+    
+    def set_distance_from_original(self, new_distance: int) -> None:
+        self.distance_from_original = new_distance
     
     def is_equal(self, other) -> bool:
         return self.get_pfh_function() == other.get_pfh_function()
@@ -60,8 +65,14 @@ class Function:
     def compare_level(self, other) -> int:
         return self.pfh_level_cmp(other.get_pfh_function())
     
+    def get_level(self) -> int:
+        return self.pfh_get_level()
+    
     def add_clause(self, clause: Clause) -> None:
         self.pfh_function.pfh_add_clause(clause)
+    
+    def add_pfh_function(self, function: PFHFunction) -> None:
+        self.pfh_function = function
     
     def create_pfh_function(self) -> None:
         n_vars = len(self.regulators)
@@ -94,6 +105,17 @@ class Function:
         # for i, b in enumerate(clause_bitarrays):
         #     print(f"Clause {i+1}: {b}")
         return clause_bitarrays
+    
+    def bitarray_to_regulators(self, clause) -> List[str]:
+        # Create a list to store the regulators present in the clause
+        present_regulators = []
+        
+        # Iterate over the bitarray and the corresponding regulators
+        for idx, bit in enumerate(clause):
+            if bit == 1:
+                present_regulators.append(self.regulators[idx])
+        
+        return present_regulators
     
     ##### pyfunctionhood wrapper #####
     
@@ -151,30 +173,26 @@ class Function:
             return self.pfh_get_parents()
         return self.pfh_get_children()
 
-    def pfh_get_parents(self) -> Tuple[Set['Function'], Set['Function'], Set['Function']]:
+    def pfh_get_parents(self) -> Tuple[Set[PFHFunction], Set[PFHFunction], Set[PFHFunction]]:
         hd = HasseDiagram(self.pfh_function.get_size())
         s1, s2, s3 = hd.get_f_parents(self.pfh_function)
-        return
+        parents = s1.union(s2.union(s3))
+        result = []
+        for parent in parents:
+            function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
+            function.add_pfh_function(parent)
+            function.set_distance_from_original(self.distance_from_original + 1)
+            result.append(function)
+        return result
 
-        # parents = self.boolean_function.get_parents()
-        # for parent in parents:
-        #     function = Function(function=parent)
-        #     function.distance_from_original = self.distance_from_original + 1
-        #     result.append(function)
-        # return result
-
-    def pfh_get_children(self) -> Tuple[Set['Function'], Set['Function'], Set['Function']]:
+    def pfh_get_children(self) -> Tuple[Set[PFHFunction], Set[PFHFunction], Set[PFHFunction]]:
         hd = HasseDiagram(self.pfh_function.get_size())
         s1, s2, s3 = hd.get_f_children(self.pfh_function)
-        # HERE
-        print(s1)
-        print(s2)
-        print(s3)
-        return
-        
-        # children = self.boolean_function.get_children()
-        # for child in children:
-        #     function = Function(function=child)
-        #     function.distance_from_original = self.distance_from_original + 1
-        #     result.append(function)
-        # return result
+        children = s1.union(s2.union(s3))
+        result = []
+        for child in children:
+            function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
+            function.add_pfh_function(child)
+            function.set_distance_from_original(self.distance_from_original + 1)
+            result.append(function)
+        return result
