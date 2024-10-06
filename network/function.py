@@ -42,6 +42,9 @@ class Function:
     def get_regulators_by_term(self) -> Dict[int, List[str]]:
         return self.regulators_by_term
 
+    def get_n_terms(self) -> int:
+        return len(self.regulators_by_term)
+
     def add_regulator_to_term(self, term_id: int, regulator: str) -> None:
         if regulator not in self.regulators:
             self.regulators.append(regulator)
@@ -50,14 +53,40 @@ class Function:
         elif regulator not in self.regulators_by_term[term_id]:
             self.regulators_by_term[term_id].append(regulator)
     
-    def print_function(self) -> None:
-        print(self.pfh_function)
+    def print_function(self) -> str:
+        result = ""
+        if self.get_n_regulators() < 1:
+            result += "Empty function"
+            return result
+        terms = self.get_regulators_by_term()
+        for i in range(1, self.get_n_terms() + 1):
+            result += "("
+            term = terms[i]
+            first = True
+            for t in term:
+                if not first:
+                    result += " && "
+                first = False
+                result += t
+            result += ")"
+            if i < self.get_n_terms():
+                result += " || "
+        return result
     
     def print_level(self):
         print(self.get_level())
     
     def set_distance_from_original(self, new_distance: int) -> None:
         self.distance_from_original = new_distance
+    
+    def set_son_consistent(self, new_son_consistent: bool) -> None:
+        self.son_consistent = new_son_consistent
+    
+    def set_regulators(self, new_regulators: List[str]) -> None:
+        self.regulators = new_regulators
+    
+    def set_regulators_by_term(self, new_regulators_by_term: Dict[int, List[str]]) -> None:
+        self.regulators_by_term = new_regulators_by_term
     
     def is_equal(self, other) -> bool:
         return self.get_pfh_function() == other.get_pfh_function()
@@ -106,15 +135,14 @@ class Function:
         #     print(f"Clause {i+1}: {b}")
         return clause_bitarrays
     
-    def bitarray_to_regulators(self, clause) -> List[str]:
+    def bitarray_to_regulators(self, clause: Clause) -> List[str]:
         # Create a list to store the regulators present in the clause
         present_regulators = []
         
         # Iterate over the bitarray and the corresponding regulators
-        for idx, bit in enumerate(clause):
+        for idx, bit in enumerate(clause.get_signature()):
             if bit == 1:
                 present_regulators.append(self.regulators[idx])
-        
         return present_regulators
     
     ##### pyfunctionhood wrapper #####
@@ -169,6 +197,8 @@ class Function:
     #     return self.pfh_function == other
     
     def pfh_get_replacements(self, generalize: bool) -> List:
+        if not self.pfh_function:
+            self.create_pfh_function()
         if generalize:
             return self.pfh_get_parents()
         return self.pfh_get_children()
@@ -180,6 +210,9 @@ class Function:
         result = []
         for parent in parents:
             function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
+            function.set_son_consistent(self.get_son_consistent())
+            function.set_regulators(self.get_regulators())
+            function.set_regulators_by_term(self.get_regulators_by_term())
             function.add_pfh_function(parent)
             function.set_distance_from_original(self.distance_from_original + 1)
             result.append(function)
@@ -192,6 +225,9 @@ class Function:
         result = []
         for child in children:
             function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
+            function.set_son_consistent(self.get_son_consistent())
+            function.set_regulators(self.get_regulators())
+            function.set_regulators_by_term(self.get_regulators_by_term())
             function.add_pfh_function(child)
             function.set_distance_from_original(self.distance_from_original + 1)
             result.append(function)

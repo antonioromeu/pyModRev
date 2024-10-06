@@ -2,7 +2,7 @@ import clingo
 import sys
 from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
-from configuration import configuration
+from configuration import configuration, UpdateType
 from utils import validate_input_name
 from typing import List, Tuple
 
@@ -188,7 +188,7 @@ class ASPHelper:
                     ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), input(V), vlabel(P,T,V,1), exp(P), time(P,T+1), r_part(V).')
                     ctl.add('base', [], '#show inc/2.')
                 
-                if update == 'ASYNC':
+                if update == UpdateType.ASYNC.value:
                     ctl.load(configuration['asp_cc_d_a'])
                     if configuration['check_consistency']:
                         ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T+1).')
@@ -197,7 +197,7 @@ class ASPHelper:
                         ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), update(P1, T, V), update(P2, T, V), P1 < P2, {vlabel(P1,T,V1,S1) : vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
                         ctl.add('base', [], '#show incT/3.')
                 
-                elif update == 'SYNC':
+                elif update == UpdateType.SYNC.value:
                     ctl.load(configuration['asp_cc_d_s'])
                     if configuration['check_consistency']:
                         ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T), time(P,T+1).')
@@ -206,7 +206,7 @@ class ASPHelper:
                         ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), exp(P1), exp(P2), P1 < P2, vertex(V), {vlabel(P1,T,V1,S1): vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
                         ctl.add('base', [], '#show incT/3.')
                 
-                elif update == 'MASYNC':
+                elif update == UpdateType.MASYNC.value:
                     ctl.load(configuration['asp_cc_d_ma'])
                     if configuration['check_consistency']:
                         ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), time(P,T)+1.')

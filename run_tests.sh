@@ -1,5 +1,5 @@
 #!/bin/sh
-python3 -m network.tests.test_edge # TODO understand why calling it like this works
+python3 -m network.tests.test_edge
 python3 -m network.tests.test_function
 # python3 -m network.tests.test_inconsistency_solution
 # python3 -m network.tests.test_inconsistent_node

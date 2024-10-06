@@ -166,7 +166,7 @@ class Inconsistency_Solution:
                     print(f"\t\tRepair #{i}:")
                     i += 1
                 for repaired_function in repair.get_repaired_functions():
-                    print(f"\t\t\tChange function of {repaired_function.get_node()} to {repaired_function.print_function()}")
+                    print(f"\t\t\tChange function of {repaired_function.get_node_id()} to {repaired_function.print_function()}.")
                 for flipped_edge in repair.get_flipped_edges():
                     print(f"\t\t\tFlip sign of edge ({flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()}).")
                 for removed_edge in repair.get_removed_edges():
@@ -296,7 +296,7 @@ class Inconsistency_Solution:
         print("\t]")
         if configuration['labelling']:
             print("\t### Labelling for this solution:")
-            multiple_profiles = configuration['multipleProfiles']
+            multiple_profiles = configuration['multiple_profiles']
             for profile, times in self.v_label.items():
                 if multiple_profiles:
                     print(f"\t\tProfile: {profile}")
@@ -315,7 +315,6 @@ class Inconsistency_Solution:
             else:
                 print(",", end="")
             print(f'"{i_node.get_id().replace(chr(34), "")}"', end="")
-            print(i_node.get_id(), end="")
         print("],")
         print(f'{prefix}"profiles": [', end="")
         first = True
@@ -324,6 +323,5 @@ class Inconsistency_Solution:
                 first = False
             else:
                 print(",", end="")
-            # print(f'"{i_profile.replace('"', '')}"', end="")
-            print(i_profile, end="")
+            print(f'"{i_profile.replace(chr(34), "")}"', end="")
         print("]")
