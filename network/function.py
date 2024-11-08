@@ -92,13 +92,21 @@ class Function:
         return self.get_pfh_function() == other.get_pfh_function()
     
     def compare_level(self, other) -> int:
+        if other is not None and other.get_pfh_function() is None:
+            other.create_pfh_function()
         return self.pfh_level_cmp(other.get_pfh_function())
+
+    def compare_level_list(self, other: List) -> int:
+        return self.pfh_level_cmp_list(other)
     
     def get_level(self) -> int:
         return self.pfh_get_level()
+
+    def get_replacements(self, generalize: bool) -> List:
+        return self.pfh_get_replacements(generalize)
     
     def add_clause(self, clause: Clause) -> None:
-        self.pfh_function.pfh_add_clause(clause)
+        self.pfh_add_clause(clause)
     
     def add_pfh_function(self, function: PFHFunction) -> None:
         self.pfh_function = function
@@ -112,34 +120,41 @@ class Function:
             initialised_clauses.add(initialised_clause)
         self.pfh_init(n_vars, initialised_clauses)
 
-    def create_bitarrays(self) -> List:
-        # Create an empty list to store bitarrays for each clause
+    def create_bitarrays(self) -> Set:
         clause_bitarrays = []
-        
-        # Iterate over each clause
         for clause_id, clause_regulators in self.regulators_by_term.items():
-            # Create a bitarray initialized to 0 with a length equal to the number of regulators
             bit_arr = bitarray(len(self.regulators))
-            bit_arr.setall(0)  # Initialize all bits to 0
-            
+            bit_arr.setall(0)
             # For each regulator in the clause, set the corresponding index to 1
             for regulator in clause_regulators:
                 if regulator in self.regulators:
                     idx = self.regulators.index(regulator)
                     bit_arr[idx] = 1
-            
-            # Append the bitarray to the list
             clause_bitarrays.append(bit_arr)
-        
-        # for i, b in enumerate(clause_bitarrays):
-        #     print(f"Clause {i+1}: {b}")
         return clause_bitarrays
     
+    # def get_active_regulators(self, clauses):
+    #     active_regulators = {}
+    #     ordered_clauses = list(clauses)
+    #     for term, active_indices in enumerate(ordered_clauses, start=1): # Enumerate through each term (starting from 1 for the term number)
+    #         active_regulators[term] = []
+    #         for term2, idx in enumerate(active_indices.get_signature(), start=0):
+    #             if idx:
+    #                 active_regulators[term].append(self.regulators[term2]) # Map each active index to the corresponding regulator
+    #     return active_regulators
+    
+    def get_active_regulators(self, clauses):
+        active_regulators = {}
+        ordered_clauses = list(clauses)
+        for term, active_indices in enumerate(ordered_clauses, start=1): # Enumerate through each term (starting from 1 for the term number)
+            active_regulators[term] = self.bitarray_to_regulators(active_indices)
+            # for term2, idx in enumerate(active_indices.get_signature(), start=0):
+            #     if idx:
+            #         active_regulators[term].append(self.regulators[term2]) # Map each active index to the corresponding regulator
+        return active_regulators
+    
     def bitarray_to_regulators(self, clause: Clause) -> List[str]:
-        # Create a list to store the regulators present in the clause
         present_regulators = []
-        
-        # Iterate over the bitarray and the corresponding regulators
         for idx, bit in enumerate(clause.get_signature()):
             if bit == 1:
                 present_regulators.append(self.regulators[idx])
@@ -189,6 +204,9 @@ class Function:
     def pfh_level_cmp(self, other: PFHFunction) -> int:
         return self.pfh_function.level_cmp(other)
 
+    def pfh_level_cmp_list(self, other: List) -> int:
+        return self.pfh_function.level_cmp_list(other)
+
     # TODO should it receive another Function or a PFH Function? should there be more comparison in place? or comparing just the pfh functions is enough?
     # def is_equal(self, function: Function) -> bool:
     #     return self.pfh_function == function.get_pfh_function()
@@ -203,32 +221,32 @@ class Function:
             return self.pfh_get_parents()
         return self.pfh_get_children()
 
-    def pfh_get_parents(self) -> Tuple[Set[PFHFunction], Set[PFHFunction], Set[PFHFunction]]:
+    def pfh_get_parents(self) -> List:
         hd = HasseDiagram(self.pfh_function.get_size())
         s1, s2, s3 = hd.get_f_parents(self.pfh_function)
         parents = s1.union(s2.union(s3))
         result = []
-        for parent in parents:
-            function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
-            function.set_son_consistent(self.get_son_consistent())
-            function.set_regulators(self.get_regulators())
-            function.set_regulators_by_term(self.get_regulators_by_term())
+        for parent in parents: # FIXME do the setters make sense?
+            function = Function(self.get_node_id())
+            function.set_distance_from_original(self.get_distance_from_original() + 1)
+            function.set_son_consistent(parent.is_consistent()) # FIXME does it make sense to put consistency equal to the one of the parent or should it be the equal to current function (self)?
+            function.set_regulators(self.get_regulators()) # FIXME should regs be the same?
+            function.set_regulators_by_term(self.get_active_regulators(parent.get_clauses()))
             function.add_pfh_function(parent)
-            function.set_distance_from_original(self.distance_from_original + 1)
             result.append(function)
         return result
 
-    def pfh_get_children(self) -> Tuple[Set[PFHFunction], Set[PFHFunction], Set[PFHFunction]]:
+    def pfh_get_children(self) -> List:
         hd = HasseDiagram(self.pfh_function.get_size())
         s1, s2, s3 = hd.get_f_children(self.pfh_function)
         children = s1.union(s2.union(s3))
         result = []
-        for child in children:
+        for child in children: # FIXME do the setters make sense?
             function = Function(self.get_node_id()) # TODO can/should clone_rm_add be used here?
-            function.set_son_consistent(self.get_son_consistent())
-            function.set_regulators(self.get_regulators())
-            function.set_regulators_by_term(self.get_regulators_by_term())
+            function.set_distance_from_original(self.get_distance_from_original() + 1)
+            function.set_son_consistent(child.is_consistent()) # FIXME does it make sense to put consistency equal to the one of the child or should it be the equal to current function (self)?
+            function.set_regulators(self.get_regulators()) # FIXME should regs be the same?
+            function.set_regulators_by_term(self.get_active_regulators(child.get_clauses()))
             function.add_pfh_function(child)
-            function.set_distance_from_original(self.distance_from_original + 1)
             result.append(function)
         return result

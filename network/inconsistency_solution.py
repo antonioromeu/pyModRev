@@ -5,7 +5,7 @@ from typing import Dict
 
 class Inconsistency_Solution:
     def __init__(self):
-        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}  # Minimum inconsistent node sets of a solution
+        self.i_nodes = {} # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...} Minimum inconsistent node sets of a solution
         self.v_label = {} # Completed observations that are filled in; if an observation is not complete, ASP fills it in and returns it (ASP tries all combinations)
         self.updates = {} # Only for async, list of updates made for async at each point in time
         self.i_profiles = {} # Which of the observations are inconsistent and the respective nodes, used when the process is stopped midway

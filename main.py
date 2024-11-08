@@ -8,7 +8,7 @@ from network.inconsistent_node import Inconsistent_Node
 from network.repair_set import Repair_Set
 from asp_helper import ASPHelper
 from configuration import configuration, UpdateType, Inconsistencies
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from bitarray import bitarray
 
 def print_help() -> None:
@@ -167,8 +167,8 @@ def print_consistency(inconsistencies: List[Inconsistency_Solution], optimizatio
         print("\n\t]")
     print("}")
 
-# This function receives an inconsistent model with a set of nodes to be repaired and 
-# tries  to repair the target nodes making the model consistent
+# This function receives an inconsistent model with a set of nodes to be repaired and
+# tries to repair the target nodes making the model consistent
 # returning the set of repair operations to be applied
 def repair_inconsistencies(inconsistency: Inconsistency_Solution) -> None:
     # Repair each inconsistent node
@@ -190,7 +190,7 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
     original_node = network.get_node(inconsistent_node.get_id())
     original_function = original_node.get_function()
     original_regulators = original_function.get_regulators() if original_function is not None else []
-    original_regulators_by_term = original_function.get_regulators_by_term() if original_function is not None else {}
+    # original_regulators_by_term = original_function.get_regulators_by_term() if original_function is not None else {}
     list_edges_remove = []
     list_edges_add = []
 
@@ -232,12 +232,12 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                     # Remove and add edges
                     for edge in remove_combination:
                         if configuration["debug"]:
-                            print(f"DEBUG: remove edge from {edge.get_start_node().get_id()}")
+                            print(f"DEBUG: Remove edge from {edge.get_start_node().get_id()}")
                         network.remove_edge(edge.get_start_node(), edge.get_end_node())
 
                     for edge in add_combination:
                         if configuration["debug"]:
-                            print(f"DEBUG: add edge from {edge.get_start_node().get_id()}")
+                            print(f"DEBUG: Add edge from {edge.get_start_node().get_id()}")
                         network.add_edge(edge.get_start_node(), edge.get_end_node(), edge.get_sign())
 
                     # If n_operations > 0, the function must be changed
@@ -246,7 +246,12 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                         clause_id = 1
 
                         for regulator in original_regulators:
-                            removed = any(regulator == edge.get_start_node().get_id() for edge in remove_combination)
+                            removed = False
+                            for edge in remove_combination:
+                                if regulator == edge.get_start_node().get_id():
+                                    removed = True
+                                    break
+                            # removed = any(regulator == edge.get_start_node().get_id() for edge in remove_combination)
                             if not removed:
                                 new_function.add_regulator_to_term(clause_id, regulator) # TODO try using add_regulator_to_term and only when needed add the clause
                                 clause_id += 1
@@ -277,18 +282,19 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                         sol_found = True
                         if not configuration["all_opt"]:
                             if configuration["debug"]:
-                                print("DEBUG: no more solutions - all_opt")
+                                print("DEBUG: No more solutions - all_opt")
                             return
         if sol_found:
             break
     if not sol_found:
         inconsistency.set_impossibility(True)
         print(f"WARN: Not possible to repair node {inconsistent_node.get_id()}")
+    return
 
 def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     function = network.get_node(inconsistent_node.get_id()).get_function()
 
-    regulators = function.get_regulators() if function is not None else {}
+    regulators = function.get_regulators() if function is not None else []
     list_edges = []
 
     for regulator in regulators:
@@ -297,7 +303,7 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
             list_edges.append(edge)
 
     if configuration["debug"]:
-        print(f"DEBUG: searching solution flipping edges for {inconsistent_node.get_id()}")
+        print(f"DEBUG: Searching solution flipping edges for {inconsistent_node.get_id()}")
 
     sol_found = False
     iterations = len(list_edges)
@@ -305,41 +311,36 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
     # Limit the number of flip edges if the node has already been repaired
     if inconsistent_node.is_repaired():
         iterations = inconsistent_node.get_n_flip_edges_operations()
-
     for n_edges in range(iterations + 1):
         if configuration["debug"]:
-            print(f"DEBUG: testing with {n_edges} edge flips")
+            print(f"DEBUG: Testing with {n_edges} edge flips")
 
         edges_candidates = get_edges_combinations(list_edges, n_edges)
-
+        
         # For each set of flipping edges
         for edge_set in edges_candidates:
             # Flip all edges
             for edge in edge_set:
                 edge.flip_sign()
                 if configuration["debug"]:
-                    print(f"DEBUG: flip edge from {edge.get_start_node().get_id()}")
-
+                    print(f"DEBUG: Flip edge from {edge.get_start_node().get_id()}")
             is_sol = repair_node_consistency_functions(inconsistency, inconsistent_node, edge_set, added_edges, removed_edges)
-
             # Put network back to normal by flipping edges back
             for edge in edge_set:
                 edge.flip_sign()
                 if configuration["debug"]:
-                    print(f"DEBUG: return flip edge from {edge.get_start_node().get_id()}")
-
+                    print(f"DEBUG: Return flip edge from {edge.get_start_node().get_id()}")
             if is_sol:
                 if configuration["debug"]:
-                    print("DEBUG: is solution by flipping edges")
+                    print("DEBUG: Is solution by flipping edges")
                 sol_found = True
                 if not configuration["all_opt"]:
                     if configuration["debug"]:
-                        print("DEBUG: no more solutions - all_opt")
+                        print("DEBUG: No more solutions - all_opt")
                     return True
-
         if sol_found:
             if configuration["debug"]:
-                print(f"DEBUG: ready to end with {n_edges} edges flipped")
+                print(f"DEBUG: Ready to end with {n_edges} edges flipped")
             break
 
     return sol_found
@@ -348,13 +349,12 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
 def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     sol_found = False
     repair_type = inconsistent_node.get_repair_type()
-    
     # If any topological operation was performed, validate if the model became consistent
     if flipped_edges or added_edges or removed_edges:
         repair_type = n_func_inconsistent_with_label(inconsistency, network.get_node(inconsistent_node.get_id()).get_function())
         if repair_type == Inconsistencies.CONSISTENT.value:
             if configuration["debug"]:
-                print("DEBUG: node consistent with only topological changes")
+                print("DEBUG: Node consistent with only topological changes")
             
             repair_set = Repair_Set()
 
@@ -389,10 +389,10 @@ def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inc
 
         if (n_ra_op == len(added_edges) + len(removed_edges)) and (n_fe_op == len(flipped_edges)) and (n_op == n_ra_op + n_fe_op):
             if configuration["debug"]:
-                print("DEBUG: better solution already found. No function search.")
+                print("DEBUG: Better solution already found. No function search.")
             return False
 
-    # Model is not consistent, and a function change is necessary
+    # Model is not consistent and a function change is necessary
     if repair_type == Inconsistencies.DOUBLE_INC.value:
         if added_edges or removed_edges:
             # If we have a double inconsistency and at least one edge was removed or added,
@@ -400,34 +400,33 @@ def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inc
             return False
 
         if configuration["debug"]:
-            print(f"DEBUG: searching for non-comparable functions for node {inconsistent_node.get_id()}")
+            print(f"DEBUG: Searching for non-comparable functions for node {inconsistent_node.get_id()}")
 
         # Case of double inconsistency
         sol_found = search_non_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges)
 
         if configuration["debug"]:
-            print(f"DEBUG: end searching for non-comparable functions for node {inconsistent_node.get_id()}")
+            print(f"DEBUG: End searching for non-comparable functions for node {inconsistent_node.get_id()}")
 
     else:
         if configuration["debug"]:
-            print(f"DEBUG: searching for comparable functions for node {inconsistent_node.get_id()}")
+            print(f"DEBUG: Searching for comparable functions for node {inconsistent_node.get_id()}")
 
         # Case of single inconsistency
         sol_found = search_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges, repair_type == Inconsistencies.SINGLE_INC_GEN.value)
         if configuration["debug"]:
-            print(f"DEBUG: end searching for comparable functions for node {inconsistent_node.get_id()}")
+            print(f"DEBUG: End searching for comparable functions for node {inconsistent_node.get_id()}")
 
     return sol_found
 
 def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: Function) -> int:
-    result = Inconsistencies.CONSISTENT.value # FIXME does it make sense? check on modrev
+    result = Inconsistencies.CONSISTENT.value
     
     # Verify for each profile
     for key, _ in labeling.get_v_label().items():
         ret = n_func_inconsistent_with_label_with_profile(labeling, function, key)
-        
         if configuration["debug"]:
-            print(f"DEBUG: consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
+            print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
         
         if result == Inconsistencies.CONSISTENT.value:
             result = ret
@@ -439,24 +438,28 @@ def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: F
 
 def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution, function: Function, profile: str) -> int:
     if configuration["debug"]:
-        print(f"\n###DEBUG: checking consistency of function: {function.print_function()} of node {function.get_node_id()}\n")
+        print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
 
     result = Inconsistencies.CONSISTENT.value
     profile_map = labeling.get_v_label()[profile]
     time = 0
     last_val = -1
     is_stable_state = len(profile_map) == 1
-
+    
     while time in profile_map:
         # If it's not a steady state, the following time must exist
         if not is_stable_state and (time + 1) not in profile_map:
             break
 
         time_map = profile_map[time]
-
         # Verify if it is an updated node
         if not is_stable_state and configuration["update"] != UpdateType.SYNC:
             updates = labeling.get_updates()[time][profile]
+            # is_updated = False
+            # for update in updates:
+            #     if update == function.get_node_id():
+            #         is_updated = True
+            #         break
             is_updated = any(update == function.get_node_id() for update in updates)
             if not is_updated:
                 time += 1
@@ -465,29 +468,62 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
         found_sat = False
         n_clauses = function.get_n_clauses()
 
-        for i in range(1, n_clauses + 1):
-            is_clause_satisfiable = True
-            clauses = function.get_clauses()
+        # for i in range(1, n_clauses + 1):
+        #     is_clause_satisfiable = True
+        #     clauses = function.get_clauses()
+        #     for clause in clauses:
+        #         vars = function.bitarray_to_regulators(clause)
+        #         for var in vars:
+        #             edge = network.get_edge(var, function.get_node_id())
+        #             if edge is not None:
+        #                 # Positive interaction
+        #                 if edge.get_sign() > 0:
+        #                     if time_map[var] == 0:
+        #                         is_clause_satisfiable = False
+        #                         break
+        #                 # Negative interaction
+        #                 else:
+        #                     if time_map[var] > 0:
+        #                         is_clause_satisfiable = False
+        #                         break
+        #             else:
+        #                 print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+        #                 return False
+        #         if is_clause_satisfiable:
+        #             found_sat = True
+        #             if is_stable_state:
+        #                 if time_map[function.get_node_id()] == 1:
+        #                     return Inconsistencies.CONSISTENT.value
+        #                 else:
+        #                     return Inconsistencies.SINGLE_INC_PART.value
+        #             else:
+        #                 if profile_map[time + 1][function.get_node_id()] != 1:
+        #                     if result == Inconsistencies.CONSISTENT.value or result == Inconsistencies.SINGLE_INC_PART.value:
+        #                         result = Inconsistencies.SINGLE_INC_PART.value
+        #                     else:
+        #                         return Inconsistencies.DOUBLE_INC.value
+        #                 break
 
+        # for i in range(1, n_clauses + 1): # Ciclo for era para os casos em q o numero de clausulas é 0
+        if n_clauses:
+            clauses = function.get_clauses()
+            # is_clause_satisfiable = True
             for clause in clauses:
+                is_clause_satisfiable = True
                 vars = function.bitarray_to_regulators(clause)
                 for var in vars:
                     edge = network.get_edge(var, function.get_node_id())
                     if edge is not None:
-                        # Positive interaction
-                        if edge.get_sign() > 0:
-                            if time_map[var] == 0:
-                                is_clause_satisfiable = False
-                                break
-                        # Negative interaction
-                        else:
-                            if time_map[var] > 0:
-                                is_clause_satisfiable = False
-                                break
+                        # Determine if clause is satisfiable based on edge sign
+                        if (edge.get_sign() > 0 and time_map[var] == 0) or \
+                        (edge.get_sign() <= 0 and time_map[var] > 0):
+                            is_clause_satisfiable = False
+                            break # Stop checking if clause is already unsatisfiable
                     else:
                         print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
                         return False
 
+                # Evaluate satisfaction status of the clause
                 if is_clause_satisfiable:
                     found_sat = True
                     if is_stable_state:
@@ -497,11 +533,11 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
                             return Inconsistencies.SINGLE_INC_PART.value
                     else:
                         if profile_map[time + 1][function.get_node_id()] != 1:
-                            if result == Inconsistencies.CONSISTENT.value or result == Inconsistencies.SINGLE_INC_PART.value:
+                            if result in (Inconsistencies.CONSISTENT.value, Inconsistencies.SINGLE_INC_PART.value):
                                 result = Inconsistencies.SINGLE_INC_PART.value
                             else:
                                 return Inconsistencies.DOUBLE_INC.value
-                        break
+                        break # Stop if one satisfiable clause is found
 
         if not found_sat:
             if is_stable_state:
@@ -519,7 +555,7 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
                         return Inconsistencies.DOUBLE_INC.value
                 else:
                     if profile_map[time + 1][function.get_node_id()] != 0:
-                        if result == Inconsistencies.CONSISTENT.value or result == Inconsistencies.SINGLE_INC_GEN.value:
+                        if result in (Inconsistencies.CONSISTENT.value, Inconsistencies.SINGLE_INC_GEN.value):
                             result = Inconsistencies.SINGLE_INC_GEN.value
                         else:
                             return Inconsistencies.DOUBLE_INC.value
@@ -528,11 +564,10 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
 
 def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge], generalize: bool):
     sol_found = False
-    
-    # Get the original function of the inconsistent node
     original_f = network.get_node(inconsistent_node.get_id()).get_function()
+    
     if original_f is None:
-        print(f"WARN: Inconsistent node {inconsistent_node.get_id()} without regulatory function.")
+        print(f"WARN: Inconsistent node {inconsistent_node.get_id()} without regulatory function")
         inconsistency.set_impossibility(True)
         return False
     
@@ -540,7 +575,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
         return False
 
     if configuration["debug"]:
-        print(f"\tDEBUG: searching for comparable functions of dimension {original_f.get_n_regulators()} going {'down' if generalize else 'up'}")
+        print(f"\tDEBUG: Searching for comparable functions of dimension {original_f.get_n_regulators()} going {'down' if generalize else 'up'}")
 
     # Get the replacement candidates
     function_repaired = False
@@ -550,10 +585,8 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
     while t_candidates:
         candidate_sol = False
         candidate = t_candidates.pop(0)
-
         if function_repaired and candidate.get_distance_from_original() > repaired_function_level:
             continue
-
         if is_func_consistent_with_label(inconsistency, candidate):
             candidate_sol = True
             repair_set = Repair_Set()
@@ -571,7 +604,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
             sol_found = True
             repaired_function_level = candidate.get_distance_from_original()
 
-            if not configuration["show_all_functions"]: # TODO what should show_all_functions do?
+            if not configuration["show_all_functions"]:
                 break
 
         taux_candidates = candidate.pfh_get_replacements(generalize)
@@ -605,11 +638,10 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
         return False
 
     if configuration["debug"]:
-        print(f"\tDEBUG: searching for non-comparable functions of dimension {original_f.get_n_regulators()}")
+        print(f"\tDEBUG: Searching for non-comparable functions of dimension {original_f.get_n_regulators()}")
 
     # Construction of new function to start search
     new_f = Function(original_f.get_node_id()) # TODO is missing the copy of the other attributes, might lead to error
-    print(new_f.get_regulators_by_term())
     # If the function is in the lower half of the Hasse diagram, start search at the most specific function and generalize
     is_generalize = True
     if level_compare:
@@ -621,10 +653,11 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
             print(f"DEBUG: Performing a search going {'up' if is_generalize else 'down'}")
 
     cindex = 1
-    for key in original_map.keys():
-        new_f.add_element_clause(cindex, key)
-        if not is_generalize:
-            cindex += 1
+    for key, vars in original_map.items():
+        for var in vars:
+            new_f.add_regulator_to_term(cindex, var)
+            if not is_generalize:
+                cindex += 1
 
     candidates.append(new_f)
 
@@ -648,10 +681,9 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
             is_consistent = True
             consistent_functions.append(candidate)
             if not function_repaired and configuration["debug"]:
-                print(f"\tDEBUG: found first function at level {candidate.get_distance_from_original()} {candidate.print_function()}")
+                print(f"\tDEBUG: Found first function at level {candidate.get_distance_from_original()} {candidate.print_function()}")
             function_repaired = True
             sol_found = True
-
             if level_compare:
                 cmp = original_f.compare_level(candidate)
                 if cmp == 0:
@@ -727,7 +759,7 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
             else:
                 print(f"DEBUG: Looked at {counter} functions. Found {len(consistent_functions)} functions\n")
         else:
-            print(f"DEBUG: no consistent functions found - {counter}")
+            print(f"DEBUG: No consistent functions found - {counter}")
 
     # Add repair sets to the solution
     if sol_found:
@@ -755,69 +787,93 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
                 inconsistency.add_repair_set(inconsistent_node.get_id(), repair_set)
     return sol_found
 
+def is_func_consistent_with_label_with_profile(labeling: Inconsistency_Solution, function: Function, profile: str) -> bool:
+    if configuration["debug"]:
+        print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
+
+    profile_map = labeling.get_v_label()[profile]
+    time = 0
+    is_stable_state = len(profile_map) == 1
+    last_val = -1
+
+    while time in profile_map:
+        if not is_stable_state and time + 1 not in profile_map:
+            break
+
+        time_map = profile_map[time]
+        if not is_stable_state and configuration["update"] != UpdateType.SYNC:
+            updates = labeling.get_updates()[time][profile]
+            is_updated = any(update == function.get_node_id() for update in updates)
+            if not is_updated:
+                time += 1
+                continue
+        
+        found_sat = False
+        n_clauses = function.get_n_clauses()
+        
+        # for i in range(1, n_clauses + 1):
+        #     is_clause_satisfiable = True
+        #     clauses = function.get_clauses()
+
+        #     for clause in clauses:
+        #         vars = function.bitarray_to_regulators(clause)
+        #         for var in vars:
+        #             edge = network.get_edge(var, function.get_node_id())
+        #             if edge is not None:
+        #                 if edge.get_sign() > 0 and time_map[var] == 0:
+        #                     is_clause_satisfiable = False
+        #                     break
+        #                 elif edge.get_sign() < 0 and time_map[var] > 0:
+        #                     is_clause_satisfiable = False
+        #                     break
+        #             else:
+        #                 print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+        #                 return False
+        
+        if n_clauses:
+            clauses = function.get_clauses()
+            for clause in clauses:
+                is_clause_satisfiable = True
+                vars = function.bitarray_to_regulators(clause)
+                for var in vars:
+                    edge = network.get_edge(var, function.get_node_id())
+                    if edge is not None:
+                        # Determine if clause is satisfiable based on edge sign
+                        if (edge.get_sign() > 0 and time_map[var] == 0) or \
+                        (edge.get_sign() <= 0 and time_map[var] > 0):
+                            is_clause_satisfiable = False
+                            break # Stop checking if clause is already unsatisfiable
+                    else:
+                        print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+                        return False
+                if is_clause_satisfiable:
+                    found_sat = True
+                    if is_stable_state:
+                        return time_map[function.get_node_id()] == 1
+                    else:
+                        if profile_map[time + 1][function.get_node_id()] != 1:
+                            return False
+                        break
+
+        if not found_sat:
+            if is_stable_state:
+                return n_clauses == 0 or time_map[function.get_node_id()] == 0
+            else:
+                if n_clauses == 0:
+                    if last_val < 0:
+                        last_val = time_map[function.get_node_id()]
+                    if profile_map[time + 1][function.get_node_id()] != last_val:
+                        return False
+                else:
+                    if profile_map[time + 1][function.get_node_id()] != 0:
+                        return False
+        time += 1
+    return True
+
 def is_func_consistent_with_label(labeling: Inconsistency_Solution, function: Function) -> bool:
     for profile in labeling.get_v_label():
-        if configuration["debug"]:
-            print(f"\n###DEBUG: checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
-
-        profile_map = labeling.get_v_label()[profile]
-        time = 0
-        is_stable_state = len(profile_map) == 1
-        last_val = -1
-
-        while time in profile_map:
-            if not is_stable_state and time + 1 not in profile_map:
-                break
-
-            time_map = profile_map[time]
-
-            if not is_stable_state and configuration["update"] != UpdateType.SYNC:
-                updates = labeling.get_updates()[time][profile]
-                if function.get_node_id() not in updates:
-                    time += 1
-                    continue
-
-            found_sat = False
-            n_clauses = function.get_n_clauses()
-
-            for i in range(1, n_clauses + 1):
-                is_clause_satisfiable = True
-                clauses = function.get_clauses()
-
-                for clause in clauses:
-                    vars = function.bitarray_to_regulators(clause)
-                    for var in vars:
-                        edge = network.get_edge(var, function.get_node_id())
-                        if edge is not None:
-                            if edge.get_sign() > 0 and time_map[var] == 0:
-                                is_clause_satisfiable = False
-                                break
-                            elif edge.get_sign() < 0 and time_map[var] > 0:
-                                is_clause_satisfiable = False
-                                break
-                        else:
-                            print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
-                            return False
-
-                    if is_clause_satisfiable:
-                        found_sat = True
-                        if is_stable_state:
-                            return time_map[function.get_node_id()] == 1
-                        else:
-                            return profile_map[time + 1][function.get_node_id()] == 1
-
-            if not found_sat:
-                if is_stable_state:
-                    if n_clauses == 0 or time_map[function.get_node_id()] == 0:
-                        return True
-                    return False
-                else:
-                    if n_clauses == 0:
-                        if last_val < 0:
-                            last_val = time_map[function.get_node_id()]
-                        return profile_map[time + 1][function.get_node_id()] == last_val
-                    return profile_map[time + 1][function.get_node_id()] == 0
-            time += 1
+        if not is_func_consistent_with_label_with_profile(labeling, function, profile):
+            return False
     return True
 
 def is_function_in_bottom_half(function: Function) -> bool:
@@ -825,28 +881,28 @@ def is_function_in_bottom_half(function: Function) -> bool:
         if configuration["debug"]:
             print("DEBUG: Half determination by state")
         return is_function_in_bottom_half_by_state(function)
-    
     n = function.get_n_regulators()
     n2 = n // 2
     mid_level = [n2 for _ in range(n)]
-    
-    return function.compare_level(mid_level) < 0 # TODO understand what compare_level should do and receive
+    return function.compare_level_list(mid_level) < 0
 
-def is_function_in_bottom_half_by_state(function: Function) -> bool:
-    reg_map = function.get_regulators_by_term()
-    regulators = function.get_n_regulators()
-    entries = int(math.pow(2, regulators))
+def is_function_in_bottom_half_by_state(function: Function) -> bool: # TODO make sure it makes sense to just use regulators instead of reg_map
+    # reg_map = function.get_regulators_by_term() # TODO can i just use regulators instead of the reg map?
+    regulators = function.get_regulators()
+    n_regulators = function.get_n_regulators()
+    entries = int(math.pow(2, n_regulators))
     n_one = 0
     n_zero = 0
-
     for entry in range(entries):
-        bits = bitarray(bin(entry)[2:].zfill(16))  # Use bitarray to simulate the bitset
+        bits = bitarray(bin(entry)[2:].zfill(16)) # Use bitarray to simulate the bitset
         input_map = {}
         bit_index = 0
-        for key in reg_map:
-            input_map[key] = 1 if bits[bit_index] else 0
+        for regulator in regulators: # TODO understand if this makes sense
+            input_map[regulator] = 1 if bits[bit_index] else 0
             bit_index += 1
-
+        # for key in reg_map: # TODO understand if it is suppose to iterate each term
+        #     input_map[key] = 1 if bits[bit_index] else 0
+        #     bit_index += 1
         if get_function_value(function, input_map):
             n_one += 1
             if n_one > entries // 2:
@@ -855,32 +911,28 @@ def is_function_in_bottom_half_by_state(function: Function) -> bool:
             n_zero += 1
             if n_zero > entries // 2:
                 break
-
     return n_zero > entries // 2
 
-def get_function_value(function: Function, input_map):
+def get_function_value(function: Function, input_map: Dict[str, int]):
     n_clauses = function.get_n_clauses()
-    for i in range(1, n_clauses + 1):
-        is_clause_satisfiable = True
-        clause = function.get_clauses()[i]
-        for item in clause:
-            edge = network.get_edge(item, function.get_node_id())
-            if edge is not None:
-                # Positive interaction
-                if edge.get_sign() > 0:
-                    if input_map[item] == 0:
-                        is_clause_satisfiable = False
-                        break
-                # Negative interaction
+    if n_clauses:
+        clauses = function.get_clauses()
+        for clause in clauses:
+            is_clause_satisfiable = True
+            vars = function.bitarray_to_regulators(clause)
+            for var in vars:
+                edge = network.get_edge(var, function.get_node_id())
+                if edge is not None:
+                    # Determine if clause is satisfiable based on edge sign
+                    if (edge.get_sign() > 0 and input_map[var] == 0) or \
+                        (edge.get_sign() <= 0 and input_map[var] > 0):
+                            is_clause_satisfiable = False
+                            break # Stop checking if clause is already unsatisfiable
                 else:
-                    if input_map[item] > 0:
-                        is_clause_satisfiable = False
-                        break
-            else:
-                print(f"WARN: Missing edge from {item} to {function.get_node_id()}")
-                return False
-        if is_clause_satisfiable:
-            return True
+                    print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+                    return False
+            if is_clause_satisfiable:
+                return True
     return False
 
 def get_edges_combinations(edges: List[Edge], n: int, index_start: int = 0) -> List[List[Edge]]:
@@ -934,7 +986,7 @@ def model_revision():
             if best_solution is None or inconsistency.compare_repairs(best_solution) > 0:
                 best_solution = inconsistency
                 if configuration["debug"]:
-                    print(f"DEBUG: found solution with {best_solution.get_n_topology_changes()} topology changes.")
+                    print(f"DEBUG: Found a solution with {best_solution.get_n_topology_changes()} topology changes")
                 if best_solution.get_n_topology_changes() == 0 and not configuration["all_opt"]:
                     break
         else:
@@ -950,7 +1002,7 @@ def model_revision():
     if configuration["all_opt"]:
         for inconsistency in f_inconsistencies:
             if configuration["debug"]:
-                print(f"DEBUG: checking for printing solution with {inconsistency.get_n_topology_changes()} topology changes")
+                print(f"DEBUG: Checking for printing solution with {inconsistency.get_n_topology_changes()} topology changes")
             if not inconsistency.get_has_impossibility() and (inconsistency.compare_repairs(best_solution) >= 0 or show_sub_opt):
                 if show_sub_opt and inconsistency.compare_repairs(best_solution) < 0:
                     if configuration["verbose"] < 2:
