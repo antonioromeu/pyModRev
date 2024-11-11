@@ -92,7 +92,9 @@ class Function:
         return self.get_pfh_function() == other.get_pfh_function()
     
     def compare_level(self, other) -> int:
-        if other is not None and other.get_pfh_function() is None:
+        if self is not None and self.get_pfh_function() is None:
+            self.create_pfh_function()
+        if other is not None and other.get_pfh_function() is None and type(other) == Function:
             other.create_pfh_function()
         return self.pfh_level_cmp(other.get_pfh_function())
 

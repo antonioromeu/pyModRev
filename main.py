@@ -1,5 +1,7 @@
 import sys
 import math
+from typing import List, Dict, Tuple
+from bitarray import bitarray
 from network.network import Network
 from network.edge import Edge
 from network.function import Function
@@ -8,130 +10,106 @@ from network.inconsistent_node import Inconsistent_Node
 from network.repair_set import Repair_Set
 from asp_helper import ASPHelper
 from configuration import configuration, UpdateType, Inconsistencies
-from typing import List, Tuple, Dict
-from bitarray import bitarray
 
 def print_help() -> None:
-    print('Model Revision program.')
-    print('  Given a model and a set of observations, it determines if the model is consistent. If not, it computes all the minimum number of repair operations in order to render the model consistent.')
-    print(f'Version: {configuration["version"]}')
-    print('Usage:')
-    print('  modrev [-m] model_file [[-obs] observation_files...] [options]')
-    print('  options:')
-    print('    --model,-m <model_file>\t\tInput model file.')
-    print('    --observations,-obs <obs_files...>\tList of observation files.')
-    #print('\t\t--output,-o <output_file>\t\tOutput file destination.')
-    #print('    --stable-state,-ss <ss_files...>\tList of stable-state observation files')
-    print('    --observation-type,-ot <value>\tType of observations in {ts|ss|both}. DEFAULT: ts.')
-    print('\t\t\t\t\t\tts   - time-series observations')
-    print('\t\t\t\t\t\tss   - stable state observations')
-    print('\t\t\t\t\t\tboth - both time-series and stable state observations')
-    print('    --update,-up <value>\t\tUpdate mode in {a|s|ma}. DEFAULT: a.')
-    print('\t\t\t\t\t\ta  - asynchronous update')
-    print('\t\t\t\t\t\ts  - synchronous update')
-    print('\t\t\t\t\t\tma - multi-asynchronous update')
-    print('    --check-consistency,-cc\t\tCheck the consistency of the model and return without repairing. DEFAULT: false.')
-    print('    --exhaustive-search\t\t\tForce exhaustive search of function repair operations. DEFAULT: false.')
-    print('    --sub-opt\t\t\t\tShow sub-optimal solutions found. DEFAULT: false.')
-    print('    --verbose,-v <value>\t\tVerbose level {0,1,2,3} of output. DEFAULT: 2.')
-    print('\t\t\t\t\t\t0  - machine style output (minimalistic easily parsable)')
-    print('\t\t\t\t\t\t1  - machine style output (using sets of sets)')
-    print('\t\t\t\t\t\t2  - human readable output')
-    print('\t\t\t\t\t\t3  - JSON format output')
-    print('    --help,-h\t\t\t\tPrint help options.')
+    help_text = f"""
+    Model Revision program.
+      Given a model and a set of observations, it determines if the model is consistent.
+      If not, it computes all the minimum number of repair operations in order to render the model consistent.
+    Version: {configuration["version"]}
+    Usage:
+      main.py [-m] model_file [[-obs] observation_files...] [options]
+      
+      options:
+        --model,-m <model_file>            Input model file.
+        --observations,-obs <obs_files...>  List of observation files.
+        --observation-type,-ot <value>      Type of observations in {{ts|ss|both}}. DEFAULT: ts.
+                                              ts   - time-series observations
+                                              ss   - stable state observations
+                                              both - both time-series and stable state observations
+        --update,-up <value>                Update mode in {{a|s|ma}}. DEFAULT: a.
+                                              a  - asynchronous update
+                                              s  - synchronous update
+                                              ma - multi-asynchronous update
+        --check-consistency,-cc             Check the consistency of the model and return without repairing. DEFAULT: false.
+        --exhaustive-search                 Force exhaustive search of function repair operations. DEFAULT: false.
+        --support,-su                       Support values for each variable.
+        --sub-opt                           Show sub-optimal solutions found. DEFAULT: false.
+        --verbose,-v <value>                Verbose level {{0,1,2,3}} of output. DEFAULT: 2.
+                                              0 - machine style output (minimalistic easily parsable)
+                                              1 - machine style output (using sets of sets)
+                                              2 - human readable output
+                                              3 - JSON format output
+        --help,-h                           Print help options.
+    """
+    print(help_text)
 
 def process_arguments(argv: List[str]) -> None:
     if len(argv) < 2:
         print_help()
         raise ValueError('Invalid number of arguments')
 
-    # Observation type
-    # 0 - time-series observations [default]
-    # 1 - stable state observations
-    # 2 - both (time-series + stable state)
     obs_type = 0
     last_opt = '-m'
+    option_mapping = {
+        '--sub-opt': 'show_solution_for_each_inconsistency',
+        '--exhaustive-search': 'force_optimum',
+        '--check-consistency': 'check_consistency'
+    }
+    retro_options = {'--steady-state', '--ss'}
+    help_options = {'--help', '-h'}
+    model_options = {'--model', '-m'}
+    observation_options = {'--observations', '-obs'}
+    observation_type_options = {'--observation-type', '-ot'}
+    observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}
+    update_options = {'--update', '-up'}
+    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}
+    verbose_options = {'--verbose', '-v'}
 
     for arg in argv:
         if arg == 'main.py':
             continue
         if arg.startswith('-'):
-            if arg == '--sub-opt':
-                configuration['show_solution_for_each_inconsistency'] = True
-                continue
-            if arg == '--exhaustive-search':
-                configuration['force_optimum'] = True
-                continue
-            if arg == '--check-consistency' or arg == '-cc':
-                configuration['check_consistency'] = True
-                continue
-
-            # Retro-compatibility option
-            if arg == '--steady-state' or arg == '--ss':
+            if arg in option_mapping:
+                configuration[option_mapping[arg]] = True
+            elif arg in model_options | observation_options | observation_type_options | update_options | verbose_options:
+                last_opt = arg
+            elif arg in retro_options:
                 obs_type = 1
-                continue
-
-            last_opt = arg
-            if last_opt in ('--help', '-h'):
+            elif arg in help_options:
                 print_help()
                 sys.exit(0)
-
-            if last_opt not in ('--model', '-m', '--observations', '-obs',
-                                '--observation-type', '-ot', '--update', 
-                                '-up', '--verbose', '-v'):
+            else:
                 print_help()
-                raise ValueError('Invalid option ' + last_opt)
+                raise ValueError(f'Invalid option: {arg}')
         else:
-            if last_opt in ('--model', '-m'):
+            if last_opt in model_options:
                 if not network.get_input_file_network():
                     network.set_input_file_network(arg)
                 else:
                     network.add_observation_file(arg)
-                continue
-            if last_opt in ('--observations', '-obs'):
+            elif last_opt in observation_options:
                 network.add_observation_file(arg)
-                continue
-            if last_opt in ('--observation-type', '-ot'):
-                last_opt = '-m'
-                if arg == 'ts':
-                    obs_type = 0
-                    continue
-                if arg == 'ss':
-                    obs_type = 1
-                    continue
-                if arg == 'both':
-                    obs_type = 2
-                    continue
-                print_help()
-                raise ValueError('Invalid value for option --observation-type: ' + arg)
-
-            if last_opt in ('--update', '-up'):
-                last_opt = '-m'
-                if arg == 'a':
-                    configuration['update'] = UpdateType.ASYNC
-                    continue
-                if arg == 's':
-                    configuration['update'] = UpdateType.SYNC
-                    continue
-                if arg == 'ma':
-                    configuration['update'] = UpdateType.MASYNC
-                    continue
-                print_help()
-                raise ValueError('Invalid value for option --update: ' + arg)
-
-            if last_opt in ('--verbose', '-v'):
-                last_opt = '-m'
+            elif last_opt in observation_type_options:
+                obs_type = observation_type_values.get(arg, None)
+                if obs_type is None:
+                    print_help()
+                    raise ValueError(f'Invalid value for --observation-type: {arg}')
+            elif last_opt in update_options:
+                configuration['update'] = update_values.get(arg, None)
+                if configuration['update'] is None:
+                    print_help()
+                    raise ValueError(f'Invalid value for --update: {arg}')
+            elif last_opt in verbose_options:
                 try:
-                    value = int(arg)
-                    if 0 <= value <= 3:
-                        configuration['verbose'] = value
+                    verbose_level = int(arg)
+                    if 0 <= verbose_level <= 3:
+                        configuration['verbose'] = verbose_level
                     else:
-                        print_help()
-                        raise ValueError('Invalid value for option --verbose: ' + arg)
+                        raise ValueError
                 except ValueError:
                     print_help()
-                    raise ValueError('Invalid value for option --verbose: ' + arg)
-
+                    raise ValueError(f'Invalid value for --verbose: {arg}')
     if obs_type in (0, 2):
         network.set_has_ts_obs(True)
     if obs_type in (1, 2):
@@ -155,32 +133,26 @@ def print_consistency(inconsistencies: List[Inconsistency_Solution], optimizatio
     print("{")
     print(f'\t"consistent": {"true" if optimization == 0 else "false,"}')
     if optimization != 0:
-        print('\t"inconsistencies": [')
-        first = True
-        for inconsistency in inconsistencies:
-            if not first:
-                print(",")
-            first = False
-            print("\t\t{")
+        print('\t"inconsistencies": [', end="")
+        for i, inconsistency in enumerate(inconsistencies):
+            if i > 0:
+                print(",", end="")
+            print("\n\t\t{", end="")
             inconsistency.print_inconsistency("\t\t\t")
-            print("\t\t}", end="")
+            print("\n\t\t}", end="")
         print("\n\t]")
     print("}")
 
-# This function receives an inconsistent model with a set of nodes to be repaired and
-# tries to repair the target nodes making the model consistent
-# returning the set of repair operations to be applied
+# This function receives an inconsistent model with a set of nodes to be repaired
+# and tries to repair the target nodes making the model consistent returning
+# the set of repair operations to be applied
 def repair_inconsistencies(inconsistency: Inconsistency_Solution) -> None:
-    # Repair each inconsistent node
     for node_id, node in inconsistency.get_i_nodes().items():
         repair_node_consistency(inconsistency, node)
-        
         if inconsistency.get_has_impossibility():
-            # One of the nodes was impossible to repair
             if configuration["debug"]:
                 print(f"#Found a node with impossibility - {node_id}")
             return
-
         if configuration["debug"]:
             print(f"#Found a repair for node - {node_id}")
 
@@ -190,7 +162,6 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
     original_node = network.get_node(inconsistent_node.get_id())
     original_function = original_node.get_function()
     original_regulators = original_function.get_regulators() if original_function is not None else []
-    # original_regulators_by_term = original_function.get_regulators_by_term() if original_function is not None else {}
     list_edges_remove = []
     list_edges_add = []
 
@@ -206,7 +177,7 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
         is_original_regulator = any(node_id == reg_id for reg_id in original_regulators)
 
         if not is_original_regulator:
-            new_edge = Edge(node, original_node, 1) # TODO understand why self pointing edge is being added?
+            new_edge = Edge(node, original_node, 1)
             list_edges_add.append(new_edge)
 
     sol_found = False
@@ -246,12 +217,12 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                         clause_id = 1
 
                         for regulator in original_regulators:
-                            removed = False
-                            for edge in remove_combination:
-                                if regulator == edge.get_start_node().get_id():
-                                    removed = True
-                                    break
-                            # removed = any(regulator == edge.get_start_node().get_id() for edge in remove_combination)
+                            # removed = False
+                            # for edge in remove_combination:
+                            #     if regulator == edge.get_start_node().get_id():
+                            #         removed = True
+                            #         break
+                            removed = any(regulator == edge.get_start_node().get_id() for edge in remove_combination)
                             if not removed:
                                 new_function.add_regulator_to_term(clause_id, regulator) # TODO try using add_regulator_to_term and only when needed add the clause
                                 clause_id += 1
@@ -293,15 +264,13 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
 
 def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     function = network.get_node(inconsistent_node.get_id()).get_function()
-
     regulators = function.get_regulators() if function is not None else []
     list_edges = []
-
+    
     for regulator in regulators:
         edge = network.get_edge(regulator, function.get_node_id())
         if edge is not None and not edge.get_fixed():
             list_edges.append(edge)
-
     if configuration["debug"]:
         print(f"DEBUG: Searching solution flipping edges for {inconsistent_node.get_id()}")
 
@@ -591,14 +560,12 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
             candidate_sol = True
             repair_set = Repair_Set()
             repair_set.add_repaired_function(candidate)
-            # Add flipped, added, and removed edges to the repair set
             for edge in flipped_edges:
                 repair_set.add_flipped_edge(edge)
             for edge in removed_edges:
                 repair_set.remove_edge(edge)
             for edge in added_edges:
                 repair_set.add_edge(edge)
-
             inconsistency.add_repair_set(inconsistent_node.get_id(), repair_set)
             function_repaired = True
             sol_found = True
@@ -610,7 +577,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
         taux_candidates = candidate.pfh_get_replacements(generalize)
         if taux_candidates:
             for taux_candidate in taux_candidates:
-                if t_candidates not in taux_candidate:
+                if not is_in(taux_candidate, t_candidates):
                     t_candidates.append(taux_candidate)
 
         if not candidate_sol:
@@ -673,7 +640,7 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
         candidate = candidates.pop(0)
         is_consistent = False
 
-        if candidate in consistent_functions:
+        if is_in(candidate, consistent_functions):
             continue
 
         inc_type = n_func_inconsistent_with_label(inconsistency, candidate)
@@ -742,8 +709,8 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
 
         new_candidates = candidate.get_replacements(is_generalize)
         for new_candidate in new_candidates:
-            new_candidate.son_consistent = is_consistent
-            if new_candidate not in candidates:
+            new_candidate.set_son_consistent(is_consistent)
+            if not is_in(new_candidate, candidates):
                 candidates.append(new_candidate)
         if not is_consistent:
             del candidate
@@ -1012,6 +979,9 @@ def model_revision():
                 inconsistency.print_solution(configuration["verbose"], True)
     else:
         best_solution.print_solution(configuration["verbose"], True)
+
+def is_in(item: Function, lst: List[Function]) -> bool:
+    return any(item.is_equal(aux) for aux in lst)
 
 if __name__ == '__main__':
     network = Network() # Creating a new Network instance

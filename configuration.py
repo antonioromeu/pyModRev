@@ -16,7 +16,7 @@ configuration = {
     'verbose': 2,
     'version': '1.0.0',
     'update': UpdateType.ASYNC, # Setting the update type to ASYNC
-    'debug': True,
+    'debug': False,
     'check_asp': True, # Use ASP consistency check program
     'function_asp': True, # Use ASP function program
     'all_opt': True, # Show one or more solutions

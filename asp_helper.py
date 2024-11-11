@@ -3,10 +3,15 @@ import sys
 from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
 from configuration import configuration, UpdateType
-from utils import validate_input_name
 from typing import List, Tuple
 
 class ASPHelper:
+    @staticmethod
+    def validate_input_name(s: str) -> bool:
+        if s[0] != '"' and not s[0].islower() and not s[0].isdigit():
+            return False
+        return True
+
     @staticmethod
     def parse_network(network: Network) -> int:
         result = 1
@@ -38,7 +43,7 @@ class ASPHelper:
                                     result = -1
                                     continue
                                 
-                                if not validate_input_name(split[0]) or not validate_input_name(split[1]):
+                                if not ASPHelper.validate_input_name(split[0]) or not ASPHelper.validate_input_name(split[1]):
                                     print(f'WARN!\tInvalid node argument in line {str(count_line)}: {predicates[i]}')
                                     print('\t\tNodes names must start with a lower case letter, a digit, or be surrounded by quotation marks.')
                                     return -2
@@ -67,7 +72,7 @@ class ASPHelper:
                                 if len(split) != 2:
                                     continue
 
-                                if not validate_input_name(split[0]) or not validate_input_name(split[1]):
+                                if not ASPHelper.validate_input_name(split[0]) or not ASPHelper.validate_input_name(split[1]):
                                     print(f'WARN!\tInvalid node argument in line {count_line}: {predicates[i]}')
                                     print('\t\tNodes names must start with a lower case letter, a digit, or be surrounded by quotation marks.')
                                     return -2
@@ -90,7 +95,7 @@ class ASPHelper:
                                     result = -1
                                     continue
 
-                                if not validate_input_name(split[0]):
+                                if not ASPHelper.validate_input_name(split[0]):
                                     print(f'WARN!\tInvalid node argument in line {str(count_line)}: {predicates[i]}')
                                     print('\t\tNodes names must start with a lower case letter, a digit, or be surrounded by quotation marks.')
                                     return -2
@@ -128,7 +133,7 @@ class ASPHelper:
                                     result = -1
                                     continue
 
-                                if not validate_input_name(split[0]) or not validate_input_name(split[2]):
+                                if not ASPHelper.validate_input_name(split[0]) or not ASPHelper.validate_input_name(split[2]):
                                     print(f'WARN!\tInvalid node argument on line {count_line}: {predicates[i]}')
                                     print('\t\tNodes names must start with a lower case letter, a digit, or be surrounded by quotation marks.')
                                     return -2
