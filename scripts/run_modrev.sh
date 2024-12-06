@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# ./ModRev/src/modrev -m examples/fissionYeastDavidich2008/corrupted/00/fissionYeastDavidich2008-0-0-0-1-net.lp -obs examples/fissionYeastDavidich2008/obs/ts/async/a_o1_t5.lp -ot ts -up a -v 2
+
 SRC_DIR="./ModRev/src"
 BASE_COMMAND="modrev"
 FULL_COMMAND="$SRC_DIR/$BASE_COMMAND"
@@ -11,12 +13,7 @@ fi
 
 EXAMPLES_DIR="examples"
 RESULTS_DIR="results"
-CSV_OUTPUT="modrev.csv"
-
-if [ ! -d "$RESULTS_DIR" ]; then
-    mkdir -p "$RESULTS_DIR"
-fi
-echo "model,obs_file_1,obs_file_2,obs_type,update_policy,results,time" > "$RESULTS_DIR/$CSV_OUTPUT"
+CSV_OUTPUT="modrev_corrupted.csv"
 
 run_command_one_obs() {
     local model=$1
@@ -45,7 +42,49 @@ run_command_two_obs() {
     echo "$model,$obs_file_1,$obs_file_2,$obs_type,$update_policy,\"$results\",$execution_time" >> "$RESULTS_DIR/$CSV_OUTPUT"
 }
 
+if [ ! -d "$RESULTS_DIR" ]; then
+    mkdir -p "$RESULTS_DIR"
+fi
+echo "model,obs_file_1,obs_file_2,obs_type,update_policy,results,time" > "$RESULTS_DIR/$CSV_OUTPUT"
+input_network=""
+start_folder=""
+finish_folder=""
+run_non_corrupted=0
+run_corrupted=0
+n_observations="0" # 0 for single and mix, 1 just single, 2 just mix
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--network)
+            input_network=$2
+            shift 2
+            ;;
+        -nc|--non_corrupted)
+            run_non_corrupted=1
+            shift 1
+            ;;
+        -c|--corrupted)
+            run_corrupted=1
+            shift 1
+            ;;
+        -s|--start)
+            start_folder=$2
+            shift 2
+            ;;
+        -f|--finish)
+            finish_folder=$2
+            shift 2
+            ;;
+        -no|--n_observations)
+            n_observations=$2
+            shift 2
+            ;;
+    esac
+done
+
 for network in examples/*/; do
+    if [ -n "$input_network" ] && [[ $network != *"/$input_network/"* ]]; then
+        continue
+    fi
     NON_CORRUPTED="${network}non_corrupted"
     CORRUPTED="${network}corrupted"
     OBS="${network}obs"
@@ -61,59 +100,79 @@ for network in examples/*/; do
     TS_SYNC_FILES=($(find "$OBS/ts/ssync" -type f | sort -V))
     TS_ASYNC_FILES=($(find "$OBS/ts/async" -type f | sort -V))
 
-    # Process non-corrupted model with 1 obs file
-    for obs in "$SS_FILE" "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
-        if [[ $obs == *"/ss/"* ]]; then
-            run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ss" "s"
-        elif [[ $obs == *"/ssync/"* ]]; then
-            run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ts" "s"
-        elif [[ $obs == *"/async/"* ]]; then
-            run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ts" "a"
+    if [[ $run_non_corrupted -eq 1 ]]; then
+        # Process non-corrupted model with 1 obs file
+        if [[ $n_observations == "0" || $n_observations == "1" ]]; then
+            for obs in "$SS_FILE" "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
+                if [[ $obs == *"/ss/"* ]]; then
+                    run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ss" "s"
+                elif [[ $obs == *"/ssync/"* ]]; then
+                    run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ts" "s"
+                elif [[ $obs == *"/async/"* ]]; then
+                    run_command_one_obs "$NON_CORRUPTED_MODEL" "$obs" "ts" "a"
+                fi
+            done
         fi
-    done
 
-    # Process non-corrupted model with 2 obs files
-    for obs in "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
-        if [[ $obs == *"/ssync/"* ]]; then
-            run_command_two_obs "$NON_CORRUPTED_MODEL" "$SS_FILE" "$obs" "both" "s"
-        elif [[ $obs == *"/async/"* ]]; then
-            run_command_two_obs "$NON_CORRUPTED_MODEL" "$SS_FILE" "$obs" "both" "a"
+        # Process non-corrupted model with 2 obs files
+        if [[ $n_observations == "0" || $n_observations == "2" ]]; then
+            for obs in "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
+                if [[ $obs == *"/ssync/"* ]]; then
+                    run_command_two_obs "$NON_CORRUPTED_MODEL" "$SS_FILE" "$obs" "both" "s"
+                elif [[ $obs == *"/async/"* ]]; then
+                    run_command_two_obs "$NON_CORRUPTED_MODEL" "$SS_FILE" "$obs" "both" "a"
+                fi
+            done
         fi
-    done
+    fi
 
-    # Process corrupted models with 1 obs file
-    for corrupted_folder in "$CORRUPTED"/*; do
-        if [ -d "$corrupted_folder" ]; then
-            for model_file in "$corrupted_folder"/*; do
-                if [[ $model_file == *"-net.lp" ]]; then
-                    for obs in "$SS_FILE" "${TS_ASYNC_FILES[@]}" "${TS_SYNC_FILES[@]}"; do
-                        if [[ $obs == *"/ss/"* ]]; then
-                            run_command_one_obs "$model_file" "$obs" "ss" "s"
-                        elif [[ $obs == *"/ssync/"* ]]; then
-                            run_command_one_obs "$model_file" "$obs" "ts" "s"
-                        elif [[ $obs == *"/async/"* ]]; then
-                            run_command_one_obs "$model_file" "$obs" "ts" "a"
+    if [[ $run_corrupted -eq 1 ]]; then
+        # Process corrupted models with 1 obs file
+        if [[ $n_observations == "0" || $n_observations == "1" ]]; then
+            for corrupted_folder in "$CORRUPTED"/*; do
+                folder_number="${corrupted_folder: -2}"
+                if [ -n "$start_folder" ] && [ -n "$finish_folder" ] && !(( 10#$folder_number >= 10#$start_folder && 10#$folder_number <= 10#$finish_folder )); then
+                    continue
+                fi
+                if [ -d "$corrupted_folder" ]; then
+                    for model_file in "$corrupted_folder"/*; do
+                        if [[ $model_file == *"-net.lp" ]]; then
+                            for obs in "$SS_FILE" "${TS_ASYNC_FILES[@]}" "${TS_SYNC_FILES[@]}"; do
+                                if [[ $obs == *"/ss/"* ]]; then
+                                    run_command_one_obs "$model_file" "$obs" "ss" "s"
+                                elif [[ $obs == *"/ssync/"* ]]; then
+                                    run_command_one_obs "$model_file" "$obs" "ts" "s"
+                                elif [[ $obs == *"/async/"* ]]; then
+                                    run_command_one_obs "$model_file" "$obs" "ts" "a"
+                                fi
+                            done
                         fi
                     done
                 fi
             done
         fi
-    done
 
-    # Process corrupted models with 2 obs files
-    for corrupted_folder in "$CORRUPTED"/*; do
-        if [ -d "$corrupted_folder" ]; then
-            for model_file in "$corrupted_folder"/*; do
-                if [[ $model_file == *"-net.lp" ]]; then
-                    for obs in "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
-                        if [[ $obs == *"/ssync/"* ]]; then
-                            run_command_two_obs "$model_file" "$SS_FILE" "$obs" "both" "s"
-                        elif [[ $obs == *"/async/"* ]]; then
-                            run_command_two_obs "$model_file" "$SS_FILE" "$obs" "both" "a"
+        # Process corrupted models with 2 obs files
+        if [[ $n_observations == "0" || $n_observations == "2" ]]; then
+            for corrupted_folder in "$CORRUPTED"/*; do
+                folder_number="${corrupted_folder: -2}"
+                if [ -n "$start_folder" ] && [ -n "$finish_folder" ] && !(( 10#$folder_number >= 10#$start_folder && 10#$folder_number <= 10#$finish_folder )); then
+                    continue
+                fi
+                if [ -d "$corrupted_folder" ]; then
+                    for model_file in "$corrupted_folder"/*; do
+                        if [[ $model_file == *"-net.lp" ]]; then
+                            for obs in "${TS_SYNC_FILES[@]}" "${TS_ASYNC_FILES[@]}"; do
+                                if [[ $obs == *"/ssync/"* ]]; then
+                                    run_command_two_obs "$model_file" "$SS_FILE" "$obs" "both" "s"
+                                elif [[ $obs == *"/async/"* ]]; then
+                                    run_command_two_obs "$model_file" "$SS_FILE" "$obs" "both" "a"
+                                fi
+                            done
                         fi
                     done
                 fi
             done
         fi
-    done
+    fi
 done

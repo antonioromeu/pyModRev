@@ -2,6 +2,7 @@ from network.repair_set import Repair_Set
 from network.inconsistent_node import Inconsistent_Node
 from configuration import configuration
 from typing import Dict
+import json
 
 class Inconsistency_Solution:
     def __init__(self):
@@ -194,7 +195,8 @@ class Inconsistency_Solution:
             if not first_node:
                 print(";" if verbose_level > 0 else "/", end="")
             first_node = False
-            print(f"{i_node.get_id()}:" if verbose_level > 0 else "@", end="")
+            print(i_node.get_id(), end="")
+            print(":{" if verbose_level > 0 else "@", end="")
             first_repair = True
             for repair in i_node.get_repair_set():
                 if not first_repair:
@@ -232,79 +234,68 @@ class Inconsistency_Solution:
         print()
 
     def print_json_solution(self, print_all):
-        print("{")
-        print(f"\t\"solution_repairs\": {self.n_repair_operations},")
-        print("\t\"node_repairs\": [")
-        first_node = True
-        for i_node in self.i_nodes.values():
-            if not first_node:
-                print(",")
-            first_node = False
-            print("\t\t{")
-            print(f"\t\t\t\"node\": {i_node.get_id()},")
-            print("\t\t\t\"repairs\": [")
-            first_repair = True
-            for repair in i_node.get_repair_set():
-                if not first_repair:
-                    print(",")
-                first_repair = False
-                print("\t\t\t\t{")
-                print("\t\t\t\t\t\"repairs\": [")
-                first = True
-                for added_edge in repair.get_added_edges():
-                    if not first:
-                        print(",")
-                    first = False
-                    print("\t\t\t\t\t\t{")
-                    print("\t\t\t\t\t\t\t\"type\": \"add\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {added_edge.get_start_node().get_id()},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {added_edge.get_end_node().get_id()},")
-                    print(f"\t\t\t\t\t\t\t\"sign\": {added_edge.get_sign()}")
-                    print("\t\t\t\t\t\t}")
-                for removed_edge in repair.get_removed_edges():
-                    if not first:
-                        print(",")
-                    first = False
-                    print("\t\t\t\t\t\t{")
-                    print("\t\t\t\t\t\t\t\"type\": \"remove\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {removed_edge.get_start_node().get_id()},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {removed_edge.get_end_node().get_id()}")
-                    print("\t\t\t\t\t\t}")
+        result = {
+            "solution_repairs": self.n_repair_operations,
+            "node_repairs": []
+        }
+
+        for node in self.i_nodes.values():
+            node_data = {
+                "node": node.get_id(),
+                "repair_set": []
+            }
+
+            first_repair_set = True
+            i = 1
+            
+            for repair in node.get_repair_set():
+                if not first_repair_set:
+                    node_data["repair_set"].append({})
+                first_repair_set = False
+
+                repair_data = {
+                    "repair_id": i,
+                    "repairs": []
+                }
+                i += 1
+                
+                # Adding function repairs
+                for func in repair.get_repaired_functions():
+                    repair_data["repairs"].append({
+                        "type": "F",
+                        "value": func.print_function()
+                    })
+                
+                # Adding flipped edges
                 for flipped_edge in repair.get_flipped_edges():
-                    if not first:
-                        print(",")
-                    first = False
-                    print("\t\t\t\t\t\t{")
-                    print("\t\t\t\t\t\t\t\"type\": \"flip\",")
-                    print(f"\t\t\t\t\t\t\t\"from\": {flipped_edge.get_start_node().get_id()},")
-                    print(f"\t\t\t\t\t\t\t\"to\": {flipped_edge.get_end_node().get_id()}")
-                    print("\t\t\t\t\t\t}")
-                for repaired_function in repair.get_repaired_functions():
-                    if not first:
-                        print(",")
-                    first = False
-                    print("\t\t\t\t\t\t{")
-                    print("\t\t\t\t\t\t\t\"type\": \"change_function\",")
-                    print(f"\t\t\t\t\t\t\t\"function\": \"{repaired_function.print_function()}\"")
-                    print("\t\t\t\t\t\t}")
-                print("\t\t\t\t\t]")
-                print("\t\t\t\t}")
+                    repair_data["repairs"].append({
+                        "type": "E",
+                        "value": f"({flipped_edge.get_start_node().get_id()}, {flipped_edge.get_end_node().get_id()})"
+                    })
+                
+                # Adding removed edges
+                for removed_edge in repair.get_removed_edges():
+                    repair_data["repairs"].append({
+                        "type": "R",
+                        "value": f"({removed_edge.get_start_node().get_id()}, {removed_edge.get_end_node().get_id()})"
+                    })
+                
+                # Adding added edges
+                for added_edge in repair.get_added_edges():
+                    repair_data["repairs"].append({
+                        "type": "A",
+                        "value": f"({added_edge.get_start_node().get_id()}, {added_edge.get_end_node().get_id()})",
+                        "sign": added_edge.get_sign()
+                    })
+
+                node_data["repair_set"].append(repair_data)
+
                 if not print_all:
                     break
-            print("\t\t\t]")
-            print("\t\t}")
-        print("\t]")
-        if configuration['labelling']:
-            print("\t### Labelling for this solution:")
-            multiple_profiles = configuration['multiple_profiles']
-            for profile, times in self.v_label.items():
-                if multiple_profiles:
-                    print(f"\t\tProfile: {profile}")
-                for time, ids in times.items():
-                    print(f"\t\t\tTime step: {time}")
-                    for id, value in ids.items():
-                        print(f"\t\t\t\t{id} => {value}")
-        print("}")
+
+            result["node_repairs"].append(node_data)
+
+        print(json.dumps(result, indent=4))
 
     def print_inconsistency(self, prefix):
         print(f'{prefix}"nodes": [', end="")
