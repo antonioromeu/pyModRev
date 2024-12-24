@@ -8,3 +8,4 @@ examples
 test_pfh*
 *.toml
 *.csv
+run_modrev.sh

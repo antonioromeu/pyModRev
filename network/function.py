@@ -30,7 +30,7 @@ class Function:
     
     def get_n_clauses(self) -> int:
         if self.pfh_function is None:
-            return 0
+            self.create_pfh_function()
         return self.pfh_get_n_clauses()
     
     def get_regulators(self) -> List[str]:

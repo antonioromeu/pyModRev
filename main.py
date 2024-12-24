@@ -65,6 +65,7 @@ def process_arguments(argv: List[str]) -> None:
     update_options = {'--update', '-up'}
     update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}
     verbose_options = {'--verbose', '-v'}
+    debug_options = {'--debug', '-d'}
 
     for arg in argv:
         if arg == 'main.py':
@@ -79,6 +80,8 @@ def process_arguments(argv: List[str]) -> None:
             elif arg in help_options:
                 print_help()
                 sys.exit(0)
+            elif arg in debug_options:
+                configuration['debug'] = True
             else:
                 print_help()
                 raise ValueError(f'Invalid option: {arg}')
@@ -853,32 +856,28 @@ def is_function_in_bottom_half(function: Function) -> bool:
     mid_level = [n2 for _ in range(n)]
     return function.compare_level_list(mid_level) < 0
 
-def is_function_in_bottom_half_by_state(function: Function) -> bool: # TODO make sure it makes sense to just use regulators instead of reg_map
-    # reg_map = function.get_regulators_by_term() # TODO can i just use regulators instead of the reg map?
+def is_function_in_bottom_half_by_state(function: Function) -> bool:
     regulators = function.get_regulators()
     n_regulators = function.get_n_regulators()
     entries = int(math.pow(2, n_regulators))
     n_one = 0
     n_zero = 0
     for entry in range(entries):
-        bits = bitarray(bin(entry)[2:].zfill(16)) # Use bitarray to simulate the bitset
+        bits = bitarray(bin(entry)[2:].zfill(16)[::-1]) # Use bitarray to simulate the bitset, little-endian order
         input_map = {}
         bit_index = 0
-        for regulator in regulators: # TODO understand if this makes sense
+        for regulator in regulators:
             input_map[regulator] = 1 if bits[bit_index] else 0
             bit_index += 1
-        # for key in reg_map: # TODO understand if it is suppose to iterate each term
-        #     input_map[key] = 1 if bits[bit_index] else 0
-        #     bit_index += 1
         if get_function_value(function, input_map):
             n_one += 1
-            if n_one > entries // 2:
+            if n_one > (entries // 2):
                 break
         else:
             n_zero += 1
-            if n_zero > entries // 2:
+            if n_zero > (entries // 2):
                 break
-    return n_zero > entries // 2
+    return n_zero > (entries // 2)
 
 def get_function_value(function: Function, input_map: Dict[str, int]):
     n_clauses = function.get_n_clauses()
