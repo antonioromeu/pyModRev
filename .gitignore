@@ -10,3 +10,4 @@ test_pfh*
 *.csv
 run_modrev.sh
 bin
+*.png

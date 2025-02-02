@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # /usr/bin/python3 main.py -m examples/fissionYeastDavidich2008/corrupted/00/fissionYeastDavidich2008-0-0-0-1-net.lp -obs examples/fissionYeastDavidich2008/obs/ts/async/a_o1_t5.lp -ot ts -up a -v 2
-# ./scripts/run_model.sh -n fissionYeastDavidich2008 -s 05 -f 24 -c -nc -no 1
+# ./scripts/run_pymodrev.sh -n boolean_cell_cycle -s 05 -f 24 -c -nc -no 1
+# ./scripts/run_pymodrev.sh -n thNetworkGarg2007 -s 00 -f 24 -c -no 1
+# ./scripts/run_modrev.sh -n thNetworkGarg2007 -s 02 -f 24 -c -no 1
+# ./scripts/run_pymodrev.sh -n boolean_cell_cycle -s 00 -f 24 -c -no 1
 
 BASE_COMMAND="/usr/bin/python3 main.py"
 EXAMPLES_DIR="examples"
 RESULTS_DIR="results"
-CSV_OUTPUT="pymodrev_corrupted.csv"
 
 run_command_one_obs() {
     local model=$1
@@ -38,7 +40,7 @@ run_command_two_obs() {
 if [ ! -d "$RESULTS_DIR" ]; then
     mkdir -p "$RESULTS_DIR"
 fi
-echo "model,obs_file_1,obs_file_2,obs_type,update_policy,results,time" > "$RESULTS_DIR/$CSV_OUTPUT"
+
 input_network=""
 start_folder=""
 finish_folder=""
@@ -74,6 +76,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+CSV_OUTPUT="${input_network}_pymodrev_corrupted_2.csv"
+if [ ! -s $RESULTS_DIR/$CSV_OUTPUT ]; then
+    echo "model,obs_file_1,obs_file_2,obs_type,update_policy,results,time" > "$RESULTS_DIR/$CSV_OUTPUT"
+fi
+
 for network in examples/*/; do
     if [ -n "$input_network" ] && [[ $network != *"/$input_network/"* ]]; then
         continue
@@ -91,8 +98,8 @@ for network in examples/*/; do
 
     NON_CORRUPTED_MODEL=$(find "$NON_CORRUPTED" -type f)
     SS_FILE=$(find "$OBS/ss" -type f)
-    TS_SYNC_FILES=($(find "$OBS/ts/ssync" -type f | sort -V))
-    TS_ASYNC_FILES=($(find "$OBS/ts/async" -type f | sort -V))
+    TS_SYNC_FILES=($(find "$OBS/ts/ssync" -type f | grep -E "o3_t3|o3_t20" | sort -V))
+    TS_ASYNC_FILES=($(find "$OBS/ts/async" -type f | grep -E "o3_t3|o3_t20" | sort -V))
 
     if [[ $run_non_corrupted -eq 1 ]]; then
         # Process non-corrupted model with 1 obs file

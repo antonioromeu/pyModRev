@@ -29,9 +29,12 @@ class Function:
         return self.pfh_get_clauses()
     
     def get_n_clauses(self) -> int:
-        if self.pfh_function is None:
-            self.create_pfh_function()
-        return self.pfh_get_n_clauses()
+        if self.regulators:
+            if self.pfh_function is None:
+                self.create_pfh_function()
+            return self.pfh_get_n_clauses()
+        else:
+            return 0
     
     def get_regulators(self) -> List[str]:
         return self.regulators
