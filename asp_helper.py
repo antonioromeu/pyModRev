@@ -4,6 +4,10 @@ from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
 from configuration import configuration, UpdateType
 from typing import List, Tuple
+from updaters.sync import SyncUpdater
+from updaters.async import AsyncUpdater
+from updaters.masync import MultiAsyncUpdater
+from updaters.steady_state import SteadyStateUpdater
 
 class ASPHelper:
     @staticmethod
@@ -235,6 +239,24 @@ class ASPHelper:
             print(f'Failed to check consistency: {e}')
         return result, optimization
     
+    @staticmethod
+    def get_updater(update_type):
+        updaters = {
+            "sync": SyncUpdater(),
+            "async": AsyncUpdater(),
+            "masync": MultiAsyncUpdater(),
+            "steady_state": SteadyStateUpdater(),
+        }
+        return updaters.get(update_type, None)
+
+    @staticmethod
+    def run_consistency_check(network, update_type, configuration):
+        updater = get_updater(update_type)
+        if updater:
+            return updater.check_consistency(network, configuration)
+        else:
+            raise ValueError(f"Tipo de update inválido: {update_type}")
+
     @staticmethod
     def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution, int]:
         inconsistency = Inconsistency_Solution()

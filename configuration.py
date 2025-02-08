@@ -11,7 +11,6 @@ class UpdateType(Enum):
     SYNC = 1
     MASYNC = 2
 
-# Default known values
 configuration = {
     'verbose': 2,
     'version': '1.0.0',

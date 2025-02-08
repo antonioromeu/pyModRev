@@ -121,14 +121,9 @@ def process_arguments(argv: List[str]) -> None:
 def check_consistency() -> Tuple[List[Inconsistency_Solution], int]:
     result = []
     optimization = -2
-    # Consistency check
     if configuration['check_asp']:
-        # Invoke the consistency check program in ASP
         result, optimization = ASPHelper.check_consistency(network, configuration['update'].value)
     else:
-        # TODO: Add other implementations
-        # Convert ASP to SAT or other representation
-        # Test consistency
         pass
     return result, optimization
 
