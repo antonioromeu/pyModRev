@@ -1,6 +1,6 @@
+from typing import Dict, List
 from network.node import Node
 from network.edge import Edge
-from typing import Dict, List
 
 class Network:
     def __init__(self) -> None:

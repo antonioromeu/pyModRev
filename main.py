@@ -11,11 +11,15 @@ from network.repair_set import Repair_Set
 from asp_helper import ASPHelper
 from configuration import configuration, UpdateType, Inconsistencies
 
+
 def print_help() -> None:
+    """Print help."""
     help_text = f"""
     Model Revision program.
-      Given a model and a set of observations, it determines if the model is consistent.
-      If not, it computes all the minimum number of repair operations in order to render the model consistent.
+      Given a model and a set of observations, it determines if the model is \
+        consistent.
+      If not, it computes all the minimum number of repair operations in order\
+        to render the model consistent.
     Version: {configuration["version"]}
     Usage:
       main.py [-m] model_file [[-obs] observation_files...] [options]
@@ -23,28 +27,39 @@ def print_help() -> None:
       options:
         --model,-m <model_file>            Input model file.
         --observations,-obs <obs_files...>  List of observation files.
-        --observation-type,-ot <value>      Type of observations in {{ts|ss|both}}. DEFAULT: ts.
+        --observation-type,-ot <value>      Type of observations in {{ts|ss|\
+            both}}. DEFAULT: ts.
                                               ts   - time-series observations
                                               ss   - stable state observations
-                                              both - both time-series and stable state observations
-        --update,-up <value>                Update mode in {{a|s|ma}}. DEFAULT: a.
+                                              both - both time-series and \
+                                                stable state observations
+        --update,-up <value>                Update mode in {{a|s|ma}}. \
+            DEFAULT: a.
                                               a  - asynchronous update
                                               s  - synchronous update
                                               ma - multi-asynchronous update
-        --check-consistency,-cc             Check the consistency of the model and return without repairing. DEFAULT: false.
-        --exhaustive-search                 Force exhaustive search of function repair operations. DEFAULT: false.
+        --check-consistency,-cc             Check the consistency of the model\
+              and return without repairing. DEFAULT: false.
+        --exhaustive-search                 Force exhaustive search of \
+            function repair operations. DEFAULT: false.
         --support,-su                       Support values for each variable.
-        --sub-opt                           Show sub-optimal solutions found. DEFAULT: false.
-        --verbose,-v <value>                Verbose level {{0,1,2,3}} of output. DEFAULT: 2.
-                                              0 - machine style output (minimalistic easily parsable)
-                                              1 - machine style output (using sets of sets)
+        --sub-opt                           Show sub-optimal solutions found. \
+            DEFAULT: false.
+        --verbose,-v <value>                Verbose level {{0,1,2,3}} of \
+            output. DEFAULT: 2.
+                                              0 - machine style output \
+                                                (minimalistic easily parsable)
+                                              1 - machine style output (using \
+                                                sets of sets)
                                               2 - human readable output
                                               3 - JSON format output
         --help,-h                           Print help options.
     """
     print(help_text)
 
-def process_arguments(argv: List[str]) -> None:
+
+def process_arguments(network: Network, argv: List[str]) -> None:
+    """Process arguments."""
     if len(argv) < 2:
         print_help()
         raise ValueError('Invalid number of arguments')
@@ -63,7 +78,8 @@ def process_arguments(argv: List[str]) -> None:
     observation_type_options = {'--observation-type', '-ot'}
     observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}
     update_options = {'--update', '-up'}
-    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}
+    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC,
+                     'ma': UpdateType.MASYNC}
     verbose_options = {'--verbose', '-v'}
     debug_options = {'--debug', '-d'}
 
@@ -73,7 +89,9 @@ def process_arguments(argv: List[str]) -> None:
         if arg.startswith('-'):
             if arg in option_mapping:
                 configuration[option_mapping[arg]] = True
-            elif arg in model_options | observation_options | observation_type_options | update_options | verbose_options:
+            elif arg in model_options | observation_options | \
+                    observation_type_options | update_options | \
+                    verbose_options:
                 last_opt = arg
             elif arg in retro_options:
                 obs_type = 1
@@ -118,7 +136,7 @@ def process_arguments(argv: List[str]) -> None:
     if obs_type in (1, 2):
         network.set_has_ss_obs(True)
 
-def check_consistency() -> Tuple[List[Inconsistency_Solution], int]:
+def check_consistency(network: Network) -> Tuple[List[Inconsistency_Solution], int]:
     result = []
     optimization = -2
     if configuration['check_asp']:
@@ -144,9 +162,9 @@ def print_consistency(inconsistencies: List[Inconsistency_Solution], optimizatio
 # This function receives an inconsistent model with a set of nodes to be repaired
 # and tries to repair the target nodes making the model consistent returning
 # the set of repair operations to be applied
-def repair_inconsistencies(inconsistency: Inconsistency_Solution) -> None:
+def repair_inconsistencies(network: Network, inconsistency: Inconsistency_Solution) -> None:
     for node_id, node in inconsistency.get_i_nodes().items():
-        repair_node_consistency(inconsistency, node)
+        repair_node_consistency(network, inconsistency, node)
         if inconsistency.get_has_impossibility():
             if configuration["debug"]:
                 print(f"#Found a node with impossibility - {node_id}")
@@ -156,14 +174,16 @@ def repair_inconsistencies(inconsistency: Inconsistency_Solution) -> None:
 
 # This function repairs a given node and determines all possible solutions
 # consider 0 .. N add/remove repair operations, starting with 0 repairs of this type
-def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node) -> None:
+def repair_node_consistency(network: Network, inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node) -> None:
     original_node = network.get_node(inconsistent_node.get_id())
     original_function = original_node.get_function()
-    original_regulators = original_function.get_regulators() if original_function is not None else []
+    original_regulators = original_function.get_regulators() \
+        if original_function is not None \
+        else []
     list_edges_remove = []
     list_edges_add = []
 
-    for regulator in original_regulators: # TODO confirm if it is the correct translation
+    for regulator in original_regulators:
         edge = network.get_edge(regulator, original_function.get_node_id())
         if edge is not None and not edge.get_fixed():
             list_edges_remove.append(edge)
@@ -235,7 +255,7 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
                         original_node.add_function(new_function)
                     
                     # Test with edge flips starting with 0 edge flips
-                    is_sol = repair_node_consistency_flipping_edges(inconsistency, inconsistent_node, add_combination, remove_combination)
+                    is_sol = repair_node_consistency_flipping_edges(network, inconsistency, inconsistent_node, add_combination, remove_combination)
 
                     # Add and remove edges for the original network
                     for edge in remove_combination:
@@ -260,7 +280,7 @@ def repair_node_consistency(inconsistency: Inconsistency_Solution, inconsistent_
         print(f"WARN: Not possible to repair node {inconsistent_node.get_id()}")
     return
 
-def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
+def repair_node_consistency_flipping_edges(network: Network, inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     function = network.get_node(inconsistent_node.get_id()).get_function()
     regulators = function.get_regulators() if function is not None else []
     list_edges = []
@@ -291,7 +311,7 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
                 edge.flip_sign()
                 if configuration["debug"]:
                     print(f"DEBUG: Flip edge from {edge.get_start_node().get_id()}")
-            is_sol = repair_node_consistency_functions(inconsistency, inconsistent_node, edge_set, added_edges, removed_edges)
+            is_sol = repair_node_consistency_functions(network, inconsistency, inconsistent_node, edge_set, added_edges, removed_edges)
             # Put network back to normal by flipping edges back
             for edge in edge_set:
                 edge.flip_sign()
@@ -313,12 +333,12 @@ def repair_node_consistency_flipping_edges(inconsistency: Inconsistency_Solution
     return sol_found
 
 # Repairs the function of the node, if necessary
-def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
+def repair_node_consistency_functions(network: Network, inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     sol_found = False
     repair_type = inconsistent_node.get_repair_type()
     # If any topological operation was performed, validate if the model became consistent
     if flipped_edges or added_edges or removed_edges:
-        repair_type = n_func_inconsistent_with_label(inconsistency, network.get_node(inconsistent_node.get_id()).get_function())
+        repair_type = n_func_inconsistent_with_label(network, inconsistency, network.get_node(inconsistent_node.get_id()).get_function())
         if repair_type == Inconsistencies.CONSISTENT.value:
             if configuration["debug"]:
                 print("DEBUG: Node consistent with only topological changes")
@@ -370,7 +390,7 @@ def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inc
             print(f"DEBUG: Searching for non-comparable functions for node {inconsistent_node.get_id()}")
 
         # Case of double inconsistency
-        sol_found = search_non_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges)
+        sol_found = search_non_comparable_functions(network, inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges)
 
         if configuration["debug"]:
             print(f"DEBUG: End searching for non-comparable functions for node {inconsistent_node.get_id()}")
@@ -380,18 +400,18 @@ def repair_node_consistency_functions(inconsistency: Inconsistency_Solution, inc
             print(f"DEBUG: Searching for comparable functions for node {inconsistent_node.get_id()}")
 
         # Case of single inconsistency
-        sol_found = search_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges, repair_type == Inconsistencies.SINGLE_INC_GEN.value)
+        sol_found = search_comparable_functions(network, inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges, repair_type == Inconsistencies.SINGLE_INC_GEN.value)
         if configuration["debug"]:
             print(f"DEBUG: End searching for comparable functions for node {inconsistent_node.get_id()}")
 
     return sol_found
 
-def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: Function) -> int:
+def n_func_inconsistent_with_label(network: Network, labeling: Inconsistency_Solution, function: Function) -> int:
     result = Inconsistencies.CONSISTENT.value
     
     # Verify for each profile
     for key, _ in labeling.get_v_label().items():
-        ret = n_func_inconsistent_with_label_with_profile(labeling, function, key)
+        ret = n_func_inconsistent_with_label_with_profile(network, labeling, function, key)
         if configuration["debug"]:
             print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
         
@@ -403,7 +423,7 @@ def n_func_inconsistent_with_label(labeling: Inconsistency_Solution, function: F
                 break
     return result
 
-def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution, function: Function, profile: str) -> int:
+def n_func_inconsistent_with_label_with_profile(network: Network, labeling: Inconsistency_Solution, function: Function, profile: str) -> int:
     if configuration["debug"]:
         print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
 
@@ -529,7 +549,7 @@ def n_func_inconsistent_with_label_with_profile(labeling: Inconsistency_Solution
         time += 1
     return result
 
-def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge], generalize: bool):
+def search_comparable_functions(network: Network, inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge], generalize: bool):
     sol_found = False
     original_f = network.get_node(inconsistent_node.get_id()).get_function()
     
@@ -554,7 +574,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
         candidate = t_candidates.pop(0)
         if function_repaired and candidate.get_distance_from_original() > repaired_function_level:
             continue
-        if is_func_consistent_with_label(inconsistency, candidate):
+        if is_func_consistent_with_label(network, inconsistency, candidate):
             candidate_sol = True
             repair_set = Repair_Set()
             repair_set.add_repaired_function(candidate)
@@ -584,7 +604,7 @@ def search_comparable_functions(inconsistency: Inconsistency_Solution, inconsist
         return search_non_comparable_functions(inconsistency, inconsistent_node, flipped_edges, added_edges, removed_edges)
     return sol_found
 
-def search_non_comparable_functions(inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
+def search_non_comparable_functions(network: Network, inconsistency: Inconsistency_Solution, inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge], added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
     sol_found = False
     candidates = []
     consistent_functions = []
@@ -612,7 +632,7 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
     if level_compare:
         if configuration["debug"]:
             print("DEBUG: Starting half determination")
-        is_generalize = is_function_in_bottom_half(original_f)
+        is_generalize = is_function_in_bottom_half(network, original_f)
         if configuration["debug"]:
             print("DEBUG: End half determination")
             print(f"DEBUG: Performing a search going {'up' if is_generalize else 'down'}")
@@ -641,7 +661,7 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
         if is_in(candidate, consistent_functions):
             continue
 
-        inc_type = n_func_inconsistent_with_label(inconsistency, candidate)
+        inc_type = n_func_inconsistent_with_label(network, inconsistency, candidate)
         if inc_type == Inconsistencies.CONSISTENT.value:
             is_consistent = True
             consistent_functions.append(candidate)
@@ -752,7 +772,7 @@ def search_non_comparable_functions(inconsistency: Inconsistency_Solution, incon
                 inconsistency.add_repair_set(inconsistent_node.get_id(), repair_set)
     return sol_found
 
-def is_func_consistent_with_label_with_profile(labeling: Inconsistency_Solution, function: Function, profile: str) -> bool:
+def is_func_consistent_with_label_with_profile(network: Network, labeling: Inconsistency_Solution, function: Function, profile: str) -> bool:
     if configuration["debug"]:
         print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
 
@@ -835,23 +855,23 @@ def is_func_consistent_with_label_with_profile(labeling: Inconsistency_Solution,
         time += 1
     return True
 
-def is_func_consistent_with_label(labeling: Inconsistency_Solution, function: Function) -> bool:
+def is_func_consistent_with_label(network: Network, labeling: Inconsistency_Solution, function: Function) -> bool:
     for profile in labeling.get_v_label():
-        if not is_func_consistent_with_label_with_profile(labeling, function, profile):
+        if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
             return False
     return True
 
-def is_function_in_bottom_half(function: Function) -> bool:
+def is_function_in_bottom_half(network: Network, function: Function) -> bool:
     if configuration["exact_middle_function_determination"]:
         if configuration["debug"]:
             print("DEBUG: Half determination by state")
-        return is_function_in_bottom_half_by_state(function)
+        return is_function_in_bottom_half_by_state(network, function)
     n = function.get_n_regulators()
     n2 = n // 2
     mid_level = [n2 for _ in range(n)]
     return function.compare_level_list(mid_level) < 0
 
-def is_function_in_bottom_half_by_state(function: Function) -> bool:
+def is_function_in_bottom_half_by_state(network: Network, function: Function) -> bool:
     regulators = function.get_regulators()
     n_regulators = function.get_n_regulators()
     entries = int(math.pow(2, n_regulators))
@@ -864,7 +884,7 @@ def is_function_in_bottom_half_by_state(function: Function) -> bool:
         for regulator in regulators:
             input_map[regulator] = 1 if bits[bit_index] else 0
             bit_index += 1
-        if get_function_value(function, input_map):
+        if get_function_value(network, function, input_map):
             n_one += 1
             if n_one > (entries // 2):
                 break
@@ -874,7 +894,7 @@ def is_function_in_bottom_half_by_state(function: Function) -> bool:
                 break
     return n_zero > (entries // 2)
 
-def get_function_value(function: Function, input_map: Dict[str, int]):
+def get_function_value(network: Network, function: Function, input_map: Dict[str, int]):
     n_clauses = function.get_n_clauses()
     if n_clauses:
         clauses = function.get_clauses()
@@ -914,9 +934,9 @@ def get_edges_combinations(edges: List[Edge], n: int, index_start: int = 0) -> L
 # 1 - tries to repair functions
 # 2 - tries to flip the sign of the edges
 # 3 - tries to add or remove edges
-def model_revision():
+def model_revision(network: Network):
     optimization = -2
-    f_inconsistencies, optimization = check_consistency()
+    f_inconsistencies, optimization = check_consistency(network)
     if configuration["check_consistency"]:
         print_consistency(f_inconsistencies, optimization)
         return
@@ -940,7 +960,7 @@ def model_revision():
     best_solution = None
 
     for inconsistency in f_inconsistencies:
-        repair_inconsistencies(inconsistency)
+        repair_inconsistencies(network, inconsistency)
 
         # Check for valid solution
         if not inconsistency.get_has_impossibility():
@@ -974,14 +994,17 @@ def model_revision():
     else:
         best_solution.print_solution(configuration["verbose"], True)
 
+
 def is_in(item: Function, lst: List[Function]) -> bool:
     return any(item.is_equal(aux) for aux in lst)
 
+
 if __name__ == '__main__':
-    network = Network() # Creating a new Network instance
-    process_arguments(sys.argv)
+    network = Network()  # Creating a new Network instance
+    process_arguments(network, sys.argv)
     parse = ASPHelper.parse_network(network)
     if parse < 1 and not configuration['ignore_warnings']:
-        print('#ABORT:\tModel definition with errors.\n\tCheck documentation for input definition details.')
+        print('#ABORT:\tModel definition with errors.\n\tCheck documentation \
+              for input definition details.')
         sys.exit(-1)
-    model_revision() # Main function that revises the model
+    model_revision(network)  # Main function that revises the model

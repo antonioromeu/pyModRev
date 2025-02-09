@@ -1,32 +1,67 @@
+"""
+This module contains the Updater class, which serves as an abstract base class
+for applying update rules based on different update types. It provides utility
+methods for consistency checks and loading appropriate update logic based on
+the configuration.
+"""
+
 import sys
-import clingo
 from abc import ABC, abstractmethod
 from typing import List, Tuple
+import clingo
 from configuration import UpdateType
 from network.network import Network
 
+
 class Updater(ABC):
+    """
+    The Updater class is the base class for all update-related logic. It \
+        defines
+    the structure for applying update rules, checking consistency, and \
+        selecting
+    the correct updater based on the update type. This class should be extended
+    to implement specific update types such as synchronous, asynchronous, or
+    multi-asynchronous updates.
+    """
+
+    @staticmethod
     @abstractmethod
-    def apply_update_rules(ctl, configuration):
-        pass
+    def apply_update_rules(ctl, update_type, configuration):
+        """
+        Subclasses must implement this method to apply update rules based on
+        the update type (e.g., synchronous, asynchronous, etc.).
+        """
 
     @staticmethod
     def get_updater(update_type: int) -> "Updater":
+        """
+        This method returns the appropriate subclass of Updater based on the
+        provided update type.
+        """
         from updaters.sync_updater import SyncUpdater
         from updaters.async_updater import AsyncUpdater
         from updaters.multi_async_updater import MultiAsyncUpdater
+
         updaters = {
             UpdateType.SYNC.value: SyncUpdater,
             UpdateType.ASYNC.value: AsyncUpdater,
             UpdateType.MASYNC.value: MultiAsyncUpdater
         }
+
         if update_type not in updaters:
             raise ValueError(f"Invalid update type: {update_type}")
-        print(updaters[update_type])
         return updaters[update_type]
 
     @staticmethod
-    def check_consistency(network: Network, update_type, configuration) -> Tuple[List, int]:
+    def check_consistency(network: Network, update_type, configuration) -> \
+            Tuple[List, int]:
+        """
+        This method loads the necessary rules, including base rules and network
+        observation files, and applies consistency checks to the network. It \
+            also
+        handles the logic for checking the optimization based on the update \
+            type.
+        """
         result = []
         optimization = -2
         try:
@@ -34,14 +69,20 @@ class Updater(ABC):
                 if configuration['debug']:
                     print(warning_code, file=sys.stderr)
                     print(message, file=sys.stderr)
+
             ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
             ctl.load(configuration['asp_cc_base'])
+
             if network.get_has_ss_obs():
                 from updaters.steady_state_updater import SteadyStateUpdater
-                SteadyStateUpdater.apply_update_rules(ctl, configuration)
+                SteadyStateUpdater.apply_update_rules(ctl, update_type,
+                                                      configuration)
+
             if network.get_has_ts_obs():
                 from updaters.time_series_updater import TimeSeriesUpdater
-                TimeSeriesUpdater.apply_update_rules(ctl, update_type, configuration)
+                TimeSeriesUpdater.apply_update_rules(ctl, update_type,
+                                                     configuration)
+
             ctl.load(network.get_input_file_network())
             for obs_file in network.get_observation_files():
                 ctl.load(obs_file)
