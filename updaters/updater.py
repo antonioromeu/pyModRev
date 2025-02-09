@@ -2,17 +2,31 @@ import sys
 import clingo
 from abc import ABC, abstractmethod
 from typing import List, Tuple
-from asp_helper import ASPHelper
+from configuration import UpdateType
+from network.network import Network
 
 class Updater(ABC):
-    def __init__(self, update_type):
-        self.update_type = update_type
-
     @abstractmethod
-    def apply_update_rules(self, ctl):
+    def apply_update_rules(ctl, configuration):
         pass
 
-    def check_consistency(self, network, configuration) -> Tuple[List, int]:
+    @staticmethod
+    def get_updater(update_type: int) -> "Updater":
+        from updaters.sync_updater import SyncUpdater
+        from updaters.async_updater import AsyncUpdater
+        from updaters.multi_async_updater import MultiAsyncUpdater
+        updaters = {
+            UpdateType.SYNC.value: SyncUpdater,
+            UpdateType.ASYNC.value: AsyncUpdater,
+            UpdateType.MASYNC.value: MultiAsyncUpdater
+        }
+        if update_type not in updaters:
+            raise ValueError(f"Invalid update type: {update_type}")
+        print(updaters[update_type])
+        return updaters[update_type]
+
+    @staticmethod
+    def check_consistency(network: Network, update_type, configuration) -> Tuple[List, int]:
         result = []
         optimization = -2
         try:
@@ -22,7 +36,12 @@ class Updater(ABC):
                     print(message, file=sys.stderr)
             ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
             ctl.load(configuration['asp_cc_base'])
-            self.apply_update_rules(ctl, network, configuration)
+            if network.get_has_ss_obs():
+                from updaters.steady_state_updater import SteadyStateUpdater
+                SteadyStateUpdater.apply_update_rules(ctl, configuration)
+            if network.get_has_ts_obs():
+                from updaters.time_series_updater import TimeSeriesUpdater
+                TimeSeriesUpdater.apply_update_rules(ctl, update_type, configuration)
             ctl.load(network.get_input_file_network())
             for obs_file in network.get_observation_files():
                 ctl.load(obs_file)
@@ -31,6 +50,7 @@ class Updater(ABC):
                 if handle.get().satisfiable:
                     for model in handle:
                         if model and model.optimality_proven:
+                            from asp_helper import ASPHelper
                             res, opt = ASPHelper.parse_cc_model(model)
                             result.append(res)
                             optimization = opt
