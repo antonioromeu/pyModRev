@@ -5,6 +5,7 @@ to provide asynchronous updating functionality with additional consistency \
     rules.
 """
 
+import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
 
 
@@ -15,7 +16,7 @@ class AsyncUpdater(TimeSeriesUpdater):
     """
 
     @staticmethod
-    def add_specific_rules(ctl, configuration):
+    def add_specific_rules(ctl: clingo.Control, configuration) -> None:
         """
         This method loads configuration-specific rules into the control object\
               (ctl)

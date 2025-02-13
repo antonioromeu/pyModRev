@@ -4,6 +4,7 @@ This module contains the MultiAsyncUpdater class, which extends \
 to handle multiple asynchronous updates while ensuring consistency.
 """
 
+import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
 
 
@@ -13,7 +14,7 @@ class MultiAsyncUpdater(TimeSeriesUpdater):
     to handle multiple asynchronous updates while enforcing consistency checks.
     """
     @staticmethod
-    def add_specific_rules(ctl, configuration):
+    def add_specific_rules(ctl: clingo.Control, configuration) -> None:
         """
         This method loads a configuration-defined rule set into the control \
             object (ctl)

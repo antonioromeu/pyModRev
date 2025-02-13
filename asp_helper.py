@@ -1,27 +1,48 @@
+"""
+This module provides the ASPHelper class, which contains utility methods for
+working with Answer Set Programming (ASP) in network analysis.
+It includes methods for validating input names, parsing network files,
+checking consistency, and parsing ASP models to extract inconsistencies.
+"""
+
+from typing import List, Tuple
 import clingo
-import sys
 from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
-from configuration import configuration, UpdateType
-from typing import List, Tuple
+from configuration import configuration
 from updaters.updater import Updater
 
+
 class ASPHelper:
+    """
+    A utility class for handling ASP-related tasks in network analysis.
+    Provides methods for validating input names, parsing network files,
+    checking consistency, and parsing ASP models.
+    """
+
     @staticmethod
     def validate_input_name(s: str) -> bool:
+        """
+        Checks if the input name follows the required naming conventions.
+        """
         if s[0] != '"' and not s[0].islower() and not s[0].isdigit():
             return False
         return True
 
     @staticmethod
     def parse_network(network: Network) -> int:
+        """
+        Parses a network file and populates the provided Network object with
+        nodes, edges, and other properties.
+        """
         result = 1
         try:
-            with open(network.get_input_file_network(), 'r') as file:
+            with open(network.get_input_file_network(), 'r', encoding="utf-8")\
+                 as file:
                 count_line = 0
                 for line in file:
                     count_line += 1
-                    line = ''.join(line.split()) # Remove all whitespace
+                    line = ''.join(line.split())  # Remove all whitespace
                     if ').' in line:
                         predicates = line.split(')')
                         for i in range(len(predicates) - 1):
@@ -29,33 +50,34 @@ class ASPHelper:
                             if i > 0:
                                 predicates[i] = predicates[i][1:]
                             split = predicates[i].split('(')
-                            
+
                             if split[0] == 'vertex':
                                 node = split[1].split(')')[0]
                                 network.add_node(node)
                                 continue
-                            
+
                             elif split[0] == 'edge':
                                 split = split[1].split(')')
                                 split = split[0].split(',')
-                                
+
                                 if len(split) != 3:
-                                    print(f'WARN!\tEdge not recognized in line {str(count_line)}: {predicates[i]}')
+                                    print(f'WARN!\tEdge not recognized in line\
+                                           {str(count_line)}: {predicates[i]}')
                                     result = -1
                                     continue
-                                
+
                                 if not ASPHelper.validate_input_name(split[0]) or not ASPHelper.validate_input_name(split[1]):
                                     print(f'WARN!\tInvalid node argument in line {str(count_line)}: {predicates[i]}')
                                     print('\t\tNodes names must start with a lower case letter, a digit, or be surrounded by quotation marks.')
                                     return -2
-                                
+
                                 start_id, end_id = split[0], split[1]
                                 try:
                                     sign = int(split[2])
                                 except ValueError:
                                     print(f'WARN!\tInvalid edge sign: {split[2]} on line {str(count_line)} in edge {predicates[i]}')
                                     return -2
-                                
+
                                 if sign not in [0, 1]:
                                     print(f'WARN!\tInvalid edge sign on line {str(count_line)} in edge {predicates[i]}')
                                     return -2
@@ -168,11 +190,17 @@ class ASPHelper:
         return result
 
     @staticmethod
-    def check_consistency(network: Network, update_type: int) -> Tuple[List[Inconsistency_Solution], int]:
+    def check_consistency(network: Network, update_type: int) -> Tuple[List[
+            Inconsistency_Solution], int]:
+        """
+        Checks the consistency of the network based on the specified update
+        type.
+        """
         result = []
         optimization = -2
         updater = Updater.get_updater(update_type)
-        result, optimization = updater.check_consistency(network, update_type, configuration)
+        result, optimization = updater.check_consistency(network, update_type,
+                                                         configuration)
         return result, optimization
         # try:
         #     def logger(warning_code, message):
@@ -237,7 +265,11 @@ class ASPHelper:
         # return result, optimization
 
     @staticmethod
-    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution, int]:
+    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution,
+                                                     int]:
+        """
+        Parses a clingo model to extract inconsistency information.
+        """
         inconsistency = Inconsistency_Solution()
         count = 0
         for atom in model.symbols(atoms=True):

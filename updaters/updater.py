@@ -26,7 +26,8 @@ class Updater(ABC):
 
     @staticmethod
     @abstractmethod
-    def apply_update_rules(ctl, update_type, configuration):
+    def apply_update_rules(ctl: clingo.Control, update_type: int,
+                           configuration) -> None:
         """
         Subclasses must implement this method to apply update rules based on
         the update type (e.g., synchronous, asynchronous, etc.).
@@ -38,23 +39,20 @@ class Updater(ABC):
         This method returns the appropriate subclass of Updater based on the
         provided update type.
         """
-        from updaters.sync_updater import SyncUpdater
-        from updaters.async_updater import AsyncUpdater
-        from updaters.multi_async_updater import MultiAsyncUpdater
-
-        updaters = {
-            UpdateType.SYNC.value: SyncUpdater,
-            UpdateType.ASYNC.value: AsyncUpdater,
-            UpdateType.MASYNC.value: MultiAsyncUpdater
-        }
-
-        if update_type not in updaters:
-            raise ValueError(f"Invalid update type: {update_type}")
-        return updaters[update_type]
+        if update_type == UpdateType.ASYNC.value:
+            from updaters.async_updater import AsyncUpdater
+            return AsyncUpdater
+        if update_type == UpdateType.SYNC.value:
+            from updaters.sync_updater import SyncUpdater
+            return SyncUpdater
+        if update_type == UpdateType.MASYNC.value:
+            from updaters.multi_async_updater import MultiAsyncUpdater
+            return MultiAsyncUpdater
+        raise ValueError(f"Invalid update type: {update_type}")
 
     @staticmethod
-    def check_consistency(network: Network, update_type, configuration) -> \
-            Tuple[List, int]:
+    def check_consistency(network: Network, update_type: int, configuration) \
+            -> Tuple[List, int]:
         """
         This method loads the necessary rules, including base rules and network
         observation files, and applies consistency checks to the network. It \
@@ -73,12 +71,15 @@ class Updater(ABC):
             ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
             ctl.load(configuration['asp_cc_base'])
 
-            if network.get_has_ss_obs():
+            has_ss_obs = network.get_has_ss_obs()
+            has_ts_obs = network.get_has_ts_obs()
+
+            if has_ss_obs:
                 from updaters.steady_state_updater import SteadyStateUpdater
                 SteadyStateUpdater.apply_update_rules(ctl, update_type,
                                                       configuration)
 
-            if network.get_has_ts_obs():
+            if has_ts_obs:
                 from updaters.time_series_updater import TimeSeriesUpdater
                 TimeSeriesUpdater.apply_update_rules(ctl, update_type,
                                                      configuration)

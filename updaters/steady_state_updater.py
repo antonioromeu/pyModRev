@@ -4,7 +4,8 @@ This module contains the SteadyStateUpdater class, which extends the Updater \
 to handle steady-state updates while ensuring consistency constraints.
 """
 
-from updater import Updater
+import clingo
+from updaters.updater import Updater
 
 
 class SteadyStateUpdater(Updater):
@@ -14,7 +15,8 @@ class SteadyStateUpdater(Updater):
     """
 
     @staticmethod
-    def apply_update_rules(ctl, update_type, configuration):
+    def apply_update_rules(ctl: clingo.Control, update_type: int,
+                           configuration) -> None:
         """
         This method loads configuration-defined rules into the control object \
             (ctl)

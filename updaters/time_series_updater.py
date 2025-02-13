@@ -6,8 +6,8 @@ of specific update rules and applies these rules based on the configuration.
 """
 
 from abc import abstractmethod
+import clingo
 from updaters.updater import Updater
-from configuration import UpdateType
 
 
 class TimeSeriesUpdater(Updater):
@@ -20,14 +20,15 @@ class TimeSeriesUpdater(Updater):
 
     @staticmethod
     @abstractmethod
-    def add_specific_rules(ctl, configuration):
+    def add_specific_rules(ctl: clingo.Control, configuration):
         """
         Subclasses must implement this method to define rules that are specific
         to the type of update (e.g., async, sync, or multi-async).
         """
 
     @staticmethod
-    def apply_update_rules(ctl, update_type, configuration):
+    def apply_update_rules(ctl: clingo.Control, update_type: int,
+                           configuration) -> None:
         """
         This method applies general update rules and calls the specific update
         rules depending on the update type (asynchronous, synchronous, or \
@@ -41,12 +42,5 @@ class TimeSeriesUpdater(Updater):
             ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), input(V), \
                     vlabel(P,T,V,1), exp(P), time(P,T+1), r_part(V).')
             ctl.add('base', [], '#show inc/2.')
-        if update_type == UpdateType.ASYNC.value:
-            from updaters.async_updater import AsyncUpdater
-            AsyncUpdater.add_specific_rules(ctl, configuration)
-        elif update_type == UpdateType.SYNC.value:
-            from updaters.sync_updater import SyncUpdater
-            SyncUpdater.add_specific_rules(ctl, configuration)
-        elif update_type == UpdateType.MASYNC.value:
-            from updaters.multi_async_updater import MultiAsyncUpdater
-            MultiAsyncUpdater.add_specific_rules(ctl, configuration)
+        updater_class = Updater.get_updater(update_type)
+        updater_class.add_specific_rules(ctl, configuration)

@@ -3,6 +3,7 @@ This module contains the SyncUpdater class, which extends the TimeSeriesUpdater
 to handle synchronous updates with consistency checks.
 """
 
+import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
 
 
@@ -13,7 +14,7 @@ class SyncUpdater(TimeSeriesUpdater):
     """
 
     @staticmethod
-    def add_specific_rules(ctl, configuration):
+    def add_specific_rules(ctl: clingo.Control, configuration) -> None:
         """
         This method loads a configuration-defined rule set into the control \
             object (ctl)
