@@ -286,7 +286,8 @@ class ASPHelper:
                 continue
             if name == 'r_part':
                 inconsistency.add_particularization(str(args[0]))
-                # continue # FIXME why doesn't it have continue like other IFs
+                # FIXME why doesn't it have continue like other IFs
+                # continue
             if name == 'repair':
                 count += 1
                 continue

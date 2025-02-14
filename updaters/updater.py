@@ -46,8 +46,8 @@ class Updater(ABC):
             from updaters.sync_updater import SyncUpdater
             return SyncUpdater
         if update_type == UpdateType.MASYNC.value:
-            from updaters.multi_async_updater import MultiAsyncUpdater
-            return MultiAsyncUpdater
+            from updaters.complete_updater import CompleteUpdater
+            return CompleteUpdater
         raise ValueError(f"Invalid update type: {update_type}")
 
     @staticmethod
@@ -69,7 +69,18 @@ class Updater(ABC):
                     print(message, file=sys.stderr)
 
             ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
-            ctl.load(configuration['asp_cc_base'])
+            # ctl.load(configuration['asp_cc_base'])
+            ctl.add('base', [], 'sign(0;1).')
+            ctl.add('base', [], 'complement(T,S) :- sign(S),sign(T),T!=S.')
+            ctl.add('base', [], 'vertex(V) :- edge(V,_,_).')
+            ctl.add('base', [], 'vertex(V) :- edge(_,V,_).')
+            ctl.add('base', [], '{r_gen(V)} :- vertex(V), not fixed(V).')
+            ctl.add('base', [], '{r_part(V)} :- vertex(V), not fixed(V).')
+            ctl.add('base', [], 'repair(V) :- r_gen(V).')
+            ctl.add('base', [], 'repair(V) :- r_part(V).')
+            ctl.add('base', [], '#show repair/1.')
+            ctl.add('base', [], '#show r_gen/1.')
+            ctl.add('base', [], '#show r_part/1.')
 
             has_ss_obs = network.get_has_ss_obs()
             has_ts_obs = network.get_has_ts_obs()
