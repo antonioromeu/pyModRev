@@ -185,8 +185,9 @@ class ASPHelper:
                                     continue
                                 node.get_function().add_regulator_to_term(clause_id, split[2])
                                 continue
-        except IOError:
-            raise ValueError('ERROR!\tCannot open file ' + network.get_input_file_network())
+        except IOError as exc:
+            raise ValueError('ERROR!\tCannot open file ' +
+                             network.get_input_file_network()) from exc
         return result
 
     @staticmethod
@@ -202,67 +203,6 @@ class ASPHelper:
         result, optimization = updater.check_consistency(network, update_type,
                                                          configuration)
         return result, optimization
-        # try:
-        #     def logger(warning_code, message):
-        #         if configuration['debug']:
-        #             print(warning_code, file=sys.stderr)
-        #             print(message, file=sys.stderr)
-
-        #     ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
-        #     ctl.load(configuration['asp_cc_base'])
-        #     if network.get_has_ss_obs():
-        #         ctl.load(configuration['asp_cc_ss'])
-        #         if configuration['check_consistency']:
-        #             ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,0), 1{noneNegative(P,V,Id):functionOr(V,Id)}, vertex(V), ss(P), r_part(V).')
-        #             ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,1), {noneNegative(P,V,Id):functionOr(V,Id)}0, vertex(V), ss(P), functionOr(V,_), r_gen(V).')
-        #             ctl.add('base', [], '#show inc/2.')
-
-        #     if network.get_has_ts_obs():
-        #         ctl.load(configuration['asp_cc_d'])
-        #         if configuration['check_consistency']:
-        #             ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), input(V), vlabel(P,T,V,0), exp(P), time(P,T+1), r_gen(V).')
-        #             ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), input(V), vlabel(P,T,V,1), exp(P), time(P,T+1), r_part(V).')
-        #             ctl.add('base', [], '#show inc/2.')
-                
-        #         if update_type == UpdateType.ASYNC.value:
-        #             ctl.load(configuration['asp_cc_d_a'])
-        #             if configuration['check_consistency']:
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T+1).')
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), update(P,T,V), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), not topologicalerror(V), time(P,T+1).')
-        #                 ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T1), time(P2,T2), T1 != T2, time(P1,T1+1), time(P2,T2+1), update(P1, T1, V), update(P2, T2, V), {vlabel(P1,T1,V1,S1) : vlabel(P2,T2,V1,S2), functionAnd(V,Id, V1), S1!=S2}0, vlabel(P1,T1+1,V,S3), vlabel(P2,T2+1,V,S4), S3 != S4, not input(V), P1 <= P2.')
-        #                 ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), update(P1, T, V), update(P2, T, V), P1 < P2, {vlabel(P1,T,V1,S1) : vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
-        #                 ctl.add('base', [], '#show incT/3.')
-                
-        #         elif update_type == UpdateType.SYNC.value:
-        #             ctl.load(configuration['asp_cc_d_s'])
-        #             if configuration['check_consistency']:
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), not topologicalerror(V), time(P,T), time(P,T+1).')
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), not topologicalerror(V), time(P,T), time(P,T+1).')
-        #                 ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T1), time(P2,T2), T1 != T2, time(P1,T1+1), time(P2,T2+1), vertex(V), {vlabel(P1,T1,V1,S1): vlabel(P2,T2,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T1+1,V,S3), vlabel(P2,T2+1,V,S4), S3 != S4, not input(V), P1 <= P2.')
-        #                 ctl.add('base', [], 'incT(P1,P2,V) :- time(P1,T), time(P2,T), time(P1,T+1), time(P2,T+1), exp(P1), exp(P2), P1 < P2, vertex(V), {vlabel(P1,T,V1,S1): vlabel(P2,T,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T+1,V,S3), vlabel(P2,T+1,V,S4), S3 != S4, not input(V).')
-        #                 ctl.add('base', [], '#show incT/3.')
-                
-        #         elif update_type == UpdateType.MASYNC.value:
-        #             ctl.load(configuration['asp_cc_d_ma'])
-        #             if configuration['check_consistency']:
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,0), update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), r_part(V), time(P,T)+1.')
-        #                 ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), update(P,T,V), {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), r_gen(V), time(P,T+1).')
-        #     ctl.load(network.get_input_file_network())
-        #     for obs_file in network.get_observation_files():
-        #         ctl.load(obs_file)
-        #     ctl.ground([('base', [])])
-        #     with ctl.solve(yield_=True) as handle:
-        #         if handle.get().satisfiable:
-        #             for model in handle:
-        #                 if model and model.optimality_proven:
-        #                     res, opt = ASPHelper.parse_cc_model(model)
-        #                     result.append(res)
-        #                     optimization = opt
-        #         else:
-        #             optimization = -1
-        # except Exception as e:
-        #     print(f'Failed to check consistency: {e}')
-        # return result, optimization
 
     @staticmethod
     def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution,
@@ -277,9 +217,12 @@ class ASPHelper:
             args = atom.arguments
             if name == 'vlabel':
                 if len(args) > 3:
-                    inconsistency.add_v_label(str(args[0]), str(args[2]), int(str(args[3])), int(str(args[1])))
+                    inconsistency.add_v_label(str(args[0]), str(args[2]),
+                                              int(str(args[3])),
+                                              int(str(args[1])))
                 else:
-                    inconsistency.add_v_label(str(args[0]), str(args[1]), int(str(args[2])), 0)
+                    inconsistency.add_v_label(str(args[0]), str(args[1]),
+                                              int(str(args[2])), 0)
                 continue
             if name == 'r_gen':
                 inconsistency.add_generalization(str(args[0]))
@@ -292,16 +235,20 @@ class ASPHelper:
                 count += 1
                 continue
             if name == 'update':
-                inconsistency.add_update(int(str(args[1])), str(args[0]), str(args[2]))
+                inconsistency.add_update(int(str(args[1])), str(args[0]),
+                                         str(args[2]))
                 continue
             if name == 'topologicalerror':
                 inconsistency.add_topological_error(str(args[0]))
                 continue
             if name == 'inc':
-                inconsistency.add_inconsistent_profile(str(args[0]), str(args[1]))
+                inconsistency.add_inconsistent_profile(str(args[0]),
+                                                       str(args[1]))
                 continue
             if name == 'incT':
-                inconsistency.add_inconsistent_profile(str(args[0]), str(args[2]))
-                inconsistency.add_inconsistent_profile(str(args[1]), str(args[2]))
+                inconsistency.add_inconsistent_profile(str(args[0]),
+                                                       str(args[2]))
+                inconsistency.add_inconsistent_profile(str(args[1]),
+                                                       str(args[2]))
                 continue
         return inconsistency, count
