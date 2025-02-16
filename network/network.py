@@ -138,8 +138,7 @@ class Network:
             if not self.regulators[end_node.get_id()]:  # If there are no more regulators for the end_node, remove the key from the regulators dictionary
                 del self.regulators[end_node.get_id()]
         except ValueError:
-            print(f"No edge exists between {start_node.get_id()} and \
-                  {end_node.get_id()}")
+            print(f"No edge exists between {start_node.get_id()} and {end_node.get_id()}")
 
     def set_has_ss_obs(self, has_ss_obs: bool) -> None:
         """

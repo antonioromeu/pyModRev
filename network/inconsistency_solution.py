@@ -23,17 +23,24 @@ class Inconsistency_Solution:
         Initializes an empty inconsistency solution with no nodes, repairs,
         or observations.
         """
-        self.i_nodes = {}  # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...} Minimum inconsistent node sets of a solution
-        self.v_label = {}  # Completed observations that are filled in; if an observation is not complete, ASP fills it in and returns it (ASP tries all combinations)
-        self.updates = {}  # Only for async, list of updates made for async at each point in time
-        self.i_profiles = {}  # Which of the observations are inconsistent and the respective nodes, used when the process is stopped midway
+        # {'i_node_id_1': i_node_1, 'i_node_id_2': i_node_2, ...}
+        # Minimum inconsistent node sets of a solution
+        self.i_nodes = {}
+        # Completed observations that are filled in; if an observation is not
+        # complete, ASP fills it in and returns it (ASP tries all combinations)
+        self.v_label = {}
+        # Only for async, list of updates made for async at each point in time
+        self.updates = {}
+        # Which of the observations are inconsistent and the respective nodes,
+        # used when the process is stopped midway
+        self.i_profiles = {}
         self.i_nodes_profiles = {}  # Inconsistent nodes by observation
         self.n_topology_changes = 0
         self.n_ar_operations = 0
         self.n_e_operations = 0
         self.n_repair_operations = 0
         self.has_impossibility = False  # Solution is impossible to repair
-    
+
     def get_i_nodes(self) -> Dict[str, Inconsistent_Node]:
         """
         Returns all inconsistent nodes in the solution.
@@ -107,26 +114,26 @@ class Inconsistency_Solution:
         """
         self.has_impossibility = impossibility
 
-    # Returns
-    # -1 if provided solution is better than current solution
-    # 0 if provided solution is equal to current solution
-    # 1 if provided solution is weaker than current solution
     def compare_repairs(self, solution: "Inconsistency_Solution") -> int:
         """
         Compares the current solution with another solution to determine which
         is better.
+        Returns:
+            -1 if provided solution is better than current solution
+            0 if provided solution is equal to current solution
+            1 if provided solution is weaker than current solution
         """
-        if self.n_ar_operations < solution.get_n_ar_operations():
+        if (
+            self.n_ar_operations < solution.get_n_ar_operations()
+            or self.n_e_operations < solution.get_n_e_operations()
+            or self.n_repair_operations < solution.get_n_repair_operations()
+        ):
             return 1
-        if self.n_ar_operations > solution.get_n_ar_operations():
-            return -1
-        if self.n_e_operations < solution.get_n_e_operations():
-            return 1
-        if self.n_e_operations > solution.get_n_e_operations():
-            return -1
-        if self.n_repair_operations < solution.get_n_repair_operations():
-            return 1
-        if self.n_repair_operations > solution.get_n_repair_operations():
+        if (
+            self.n_ar_operations > solution.get_n_ar_operations()
+            or self.n_e_operations > solution.get_n_e_operations()
+            or self.n_repair_operations > solution.get_n_repair_operations()
+        ):
             return -1
         return 0
 
@@ -256,17 +263,18 @@ class Inconsistency_Solution:
                         repair_set.get_n_repair_operations()
             target.add_repair_set(repair_set)
 
-    def print_solution(self, verbose_level: int, print_all):
+    def print_solution(self, verbose_level: int, print_all) -> None:
         """
         Prints the solution in a human-readable format based on the specified
         verbosity level.
         """
         if verbose_level < 2:
-            return self.print_parsable_solution(verbose_level)
+            self.print_parsable_solution(verbose_level)
+            return
         if verbose_level == 3:
-            return self.print_json_solution(print_all)
-        print(f"### Found solution with {self.n_repair_operations} repair \
-              operations.")
+            self.print_json_solution(print_all)
+            return
+        print(f"### Found solution with {self.n_repair_operations} repair operations.")
         for i_node in self.i_nodes.values():
             print(f"\tInconsistent node {i_node.get_id()}.")
             i = 1
@@ -295,7 +303,7 @@ class Inconsistency_Solution:
                     for _id, value in ids.items():
                         print(f"\t\t\t\t{_id} => {value}")
 
-    def print_parsable_solution(self, verbose_level):
+    def print_parsable_solution(self, verbose_level: int) -> None:
         """
         Prints the solution in a parsable format based on the specified
         verbosity level.
@@ -321,22 +329,26 @@ class Inconsistency_Solution:
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"A:({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()})" if verbose_level > 0 else f"A,{added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()}", end="")
+                    print(f"A:({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}, {added_edge.get_sign()})" if verbose_level > 0
+                          else f"A,{added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}, {added_edge.get_sign()}", end="")
                 for removed_edge in repair.get_removed_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"R:({removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()})" if verbose_level > 0 else f"R,{removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()}", end="")
+                    print(f"R:({removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()})" if verbose_level > 0
+                          else f"R,{removed_edge.get_start_node().get_id()},{removed_edge.get_end_node().get_id()}", end="")
                 for flipped_edge in repair.get_flipped_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"E:({flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()})" if verbose_level > 0 else f"E,{flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()}", end="")
+                    print(f"E:({flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()})" if verbose_level > 0
+                          else f"E,{flipped_edge.get_start_node().get_id()},{flipped_edge.get_end_node().get_id()}", end="")
                 for repaired_function in repair.get_repaired_functions():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"F:{repaired_function.print_function()}" if verbose_level > 0 else f"F,{repaired_function.print_function()}", end="")
+                    print(f"F:{repaired_function.print_function()}" if verbose_level > 0
+                          else f"F,{repaired_function.print_function()}", end="")
                 if verbose_level > 0:
                     print("}", end="")
             if verbose_level > 0:

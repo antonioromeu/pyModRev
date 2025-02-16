@@ -61,8 +61,7 @@ class ASPHelper:
                                 split = split[0].split(',')
 
                                 if len(split) != 3:
-                                    print(f'WARN!\tEdge not recognized in line\
-                                           {str(count_line)}: {predicates[i]}')
+                                    print(f'WARN!\tEdge not recognized in line {str(count_line)}: {predicates[i]}')
                                     result = -1
                                     continue
 
