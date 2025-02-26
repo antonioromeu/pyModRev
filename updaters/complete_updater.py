@@ -1,11 +1,15 @@
 """
-This module contains the MultiAsyncUpdater class, which extends \
-    TimeSeriesUpdater
-to handle multiple asynchronous updates while ensuring consistency.
+This module contains the MultiAsyncUpdater class, which extends
+TimeSeriesUpdater to handle multiple asynchronous updates while ensuring
+consistency.
 """
 
 import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
+from network.network import Network
+from network.function import Function
+from network.inconsistency_solution import Inconsistency_Solution
+from configuration import configuration
 
 
 class CompleteUpdater(TimeSeriesUpdater):
@@ -13,12 +17,12 @@ class CompleteUpdater(TimeSeriesUpdater):
     This class extends TimeSeriesUpdater and applies additional rules
     to handle multiple asynchronous updates while enforcing consistency checks.
     """
+
     @staticmethod
-    def add_specific_rules(ctl: clingo.Control, configuration) -> None:
+    def add_specific_rules(ctl: clingo.Control) -> None:
         """
-        This method loads a configuration-defined rule set into the control \
-            object (ctl)
-        and applies consistency constraints if enabled.
+        This method loads a configuration-defined rule set into the control
+        object (ctl) and applies consistency constraints if enabled.
         """
         # ctl.load(configuration['asp_cc_d_ma'])
         ctl.add('base', [], '1{update(P,T,V):vertex(V)} :- exp(P), time(P,T), \
@@ -34,3 +38,67 @@ class CompleteUpdater(TimeSeriesUpdater):
             ctl.add('base', [], 'inc(P,V) :- vlabel(P,T+1,V,1), update(P,T,V),\
                      {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), \
                     exp(P), functionOr(V,_), r_gen(V), time(P,T+1).')
+    
+    @staticmethod
+    def is_func_consistent_with_label_with_profile(network, labeling, function, profile) -> bool:
+        """
+        Evaluates whether the function's regulatory logic aligns with the
+        expected dynamic behavior of the network. This implementation assumes a
+        time series (i.e. multiple time points) and does not handle a
+        steady-state scenario.
+        """
+        if configuration["debug"]:
+            print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
+
+        profile_map = labeling.get_v_label()[profile]
+        time = 0
+        last_val = -1
+
+        while time in profile_map:
+            # For dynamic updates, ensure there is a next time point
+            if time + 1 not in profile_map:
+                break
+
+            time_map = profile_map[time]
+
+            # Always check update condition for time series (no steady state branch)
+            if not TimeSeriesUpdater.should_update(time, labeling, profile, function):
+                time += 1
+                continue
+
+            found_sat = False
+            n_clauses = function.get_n_clauses()
+
+            if n_clauses:
+                for clause in function.get_clauses():
+                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                        found_sat = True
+                        # In a dynamic update, require a transition to a 1-label at the next time step.
+                        if profile_map[time + 1][function.get_node_id()] != 1:
+                            return False
+                        break
+
+            if not found_sat:
+                if n_clauses == 0:
+                    if last_val < 0:
+                        last_val = time_map[function.get_node_id()]
+                    if profile_map[time + 1][function.get_node_id()] != last_val:
+                        return False
+                else:
+                    if profile_map[time + 1][function.get_node_id()] != 0:
+                        return False
+            time += 1
+        return True
+
+    @staticmethod
+    def is_func_consistent_with_label(network: Network,
+                                      labeling: Inconsistency_Solution,
+                                      function: Function) -> int:
+        """
+        Checks if a function is consistent with a labeling across all profiles.
+        """
+        for profile in labeling.get_v_label():
+            # if not Updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+            if not CompleteUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+                return False
+        return True

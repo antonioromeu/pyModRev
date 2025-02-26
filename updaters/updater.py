@@ -11,23 +11,23 @@ from typing import List, Tuple
 import clingo
 from configuration import UpdateType
 from network.network import Network
+from network.function import Function
+from network.inconsistency_solution import Inconsistency_Solution
+from configuration import configuration
 
 
 class Updater(ABC):
     """
-    The Updater class is the base class for all update-related logic. It \
-        defines
-    the structure for applying update rules, checking consistency, and \
-        selecting
-    the correct updater based on the update type. This class should be extended
-    to implement specific update types such as synchronous, asynchronous, or
-    multi-asynchronous updates.
+    The Updater class is the base class for all update-related logic. It
+    defines the structure for applying update rules, checking consistency, and
+    selecting the correct updater based on the update type. This class should
+    be extended to implement specific update types such as synchronous,
+    asynchronous, or complete updates.
     """
 
     @staticmethod
     @abstractmethod
-    def apply_update_rules(ctl: clingo.Control, update_type: int,
-                           configuration) -> None:
+    def apply_update_rules(ctl: clingo.Control, update_type: int) -> None:
         """
         Subclasses must implement this method to apply update rules based on
         the update type (e.g., synchronous, asynchronous, etc.).
@@ -51,14 +51,12 @@ class Updater(ABC):
         raise ValueError(f"Invalid update type: {update_type}")
 
     @staticmethod
-    def check_consistency(network: Network, update_type: int, configuration) \
-            -> Tuple[List, int]:
+    def check_consistency(network: Network, update_type: int) -> Tuple[List, int]:
         """
         This method loads the necessary rules, including base rules and network
-        observation files, and applies consistency checks to the network. It \
-            also
-        handles the logic for checking the optimization based on the update \
-            type.
+        observation files, and applies consistency checks to the network. It
+        also handles the logic for checking the optimization based on the
+        update type.
         """
         result = []
         optimization = -2
@@ -87,13 +85,11 @@ class Updater(ABC):
 
             if has_ss_obs:
                 from updaters.steady_state_updater import SteadyStateUpdater
-                SteadyStateUpdater.apply_update_rules(ctl, update_type,
-                                                      configuration)
+                SteadyStateUpdater.apply_update_rules(ctl, update_type)
 
             if has_ts_obs:
                 from updaters.time_series_updater import TimeSeriesUpdater
-                TimeSeriesUpdater.apply_update_rules(ctl, update_type,
-                                                     configuration)
+                TimeSeriesUpdater.apply_update_rules(ctl, update_type)
 
             ctl.load(network.get_input_file_network())
             for obs_file in network.get_observation_files():
@@ -112,3 +108,53 @@ class Updater(ABC):
         except Exception as e:
             print(f'Failed to check consistency: {e}')
         return result, optimization
+
+    @abstractmethod
+    @staticmethod
+    def is_func_consistent_with_label_with_profile(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> bool:
+        """
+        Evaluates whether the function's regulatory logic aligns with the
+        expected dynamic behavior of the network. This implementation assumes a
+        time series (i.e. multiple time points) and does not handle a
+        steady-state scenario.
+        """
+
+    @abstractmethod
+    @staticmethod
+    def is_func_consistent_with_label(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function) -> int:
+        """
+        Checks if a function is consistent with a labeling across all profiles.
+        """
+
+    @abstractmethod
+    @staticmethod
+    def n_func_inconsistent_with_label_with_profile(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> int:
+        """
+        Checks the consistency of a function with a specific profile in a given
+        labeling. It evaluates the function's clauses over time and returns the
+        consistency status (consistent, single inconsistency, or double
+        inconsistency) based on the profile.
+        """
+
+    @abstractmethod
+    @staticmethod
+    def n_func_inconsistent_with_label(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function) -> int:
+        """
+        Checks the consistency of a function against a labeling. It verifies
+        each profile and returns the consistency status (consistent,
+        inconsistent, or double inconsistency).
+        """

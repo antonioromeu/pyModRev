@@ -6,6 +6,10 @@ operations needed to restore consistency.
 
 import sys
 import math
+import os
+import importlib
+import inspect
+from importlib import util
 from typing import List, Dict, Tuple
 from bitarray import bitarray
 from network.network import Network
@@ -31,7 +35,7 @@ def print_help() -> None:
       main.py [-m] model_file [[-obs] observation_files...] [options]
 
       options:
-        --model,-m <model_file>            Input model file.
+        --model,-m <model_file>             Input model file.
         --observations,-obs <obs_files...>  List of observation files.
         --observation-type,-ot <value>      Type of observations in {{ts|ss|\
             both}}. DEFAULT: ts.
@@ -39,11 +43,11 @@ def print_help() -> None:
                                               ss   - stable state observations
                                               both - both time-series and \
                                                 stable state observations
-        --update,-up <value>                Update mode in {{a|s|ma}}. \
+        --update,-up <value>                Update mode in {{a|s|c}}. \
             DEFAULT: a.
-                                              a  - asynchronous update
-                                              s  - synchronous update
-                                              ma - multi-asynchronous update
+                                              a - asynchronous update
+                                              s - synchronous update
+                                              c - complete update
         --check-consistency,-cc             Check the consistency of the model\
               and return without repairing. DEFAULT: false.
         --exhaustive-search                 Force exhaustive search of \
@@ -90,6 +94,7 @@ def process_arguments(network: Network, argv: List[str]) -> None:
                      'ma': UpdateType.MASYNC}
     verbose_options = {'--verbose', '-v'}
     debug_options = {'--debug', '-d'}
+    updater_options = {'--updater', '-upr'}
 
     for arg in argv:
         if arg == 'main.py':
@@ -99,7 +104,7 @@ def process_arguments(network: Network, argv: List[str]) -> None:
                 configuration[option_mapping[arg]] = True
             elif arg in model_options | observation_options | \
                     observation_type_options | update_options | \
-                    verbose_options:
+                    verbose_options | updater_options:
                 last_opt = arg
             elif arg in retro_options:
                 obs_type = 1
@@ -141,10 +146,49 @@ def process_arguments(network: Network, argv: List[str]) -> None:
                     print_help()
                     raise ValueError(f'Invalid value for --verbose: {arg}') \
                         from exc
+            elif last_opt in updater_options:
+                try:
+                    updater_dir = os.path.join(os.path.dirname(__file__), "updaters")
+                    # available_updaters = [
+                    #             os.path.splitext(filename)[0]
+                    #             for filename in os.listdir(updater_dir)
+                    #             if filename.endswith(".py")
+                    #         ]
+                    for filename in os.listdir(updater_dir):
+                        if filename.endswith(".py") and filename != os.path.basename(__file__):
+                            file_path = os.path.join(updater_dir, filename)
+                            print(file_path)
+                            classes = load_classes_from_file(file_path)
+                            for name, cls in classes.items():
+                                try:
+                                    if arg.lower() in name.lower():
+                                        instance = cls()  # Create an instance (assuming no required arguments)
+                                        instance.add_specific_rules()
+                                        print(f"✅ Found and instantiated '{arg}' in '{filename}'")
+                                    else:
+                                        raise ValueError
+                                except ValueError:
+                                    print(f"⚠️ '{arg}' updater not found, could not instantiate")
+                                    sys.exit(0)
+                    # if any(arg in updater for updater in available_updaters):
+                    #     print(arg)
+                except ValueError as exc:
+                    raise ValueError('Invalid updater') from exc
     if obs_type in (0, 2):
         network.set_has_ts_obs(True)
     if obs_type in (1, 2):
         network.set_has_ss_obs(True)
+
+
+def load_classes_from_file(file_path):
+    """
+    Dynamically loads classes from a Python file.
+    """
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return {name: cls for name, cls in inspect.getmembers(module, inspect.isclass)}
 
 
 def check_consistency(network: Network) \
@@ -512,7 +556,7 @@ def n_func_inconsistent_with_label(network: Network,
 
 def n_func_inconsistent_with_label_with_profile(
         network: Network, labeling: Inconsistency_Solution, function: Function,
-        profile: str) -> int:
+        profile: str, ) -> int:
     """
     Checks the consistency of a function with a specific profile in a given
     labeling. It evaluates the function's clauses over time and returns the
@@ -937,8 +981,8 @@ def is_func_consistent_with_label(network: Network,
     Checks if a function is consistent with a labeling across all profiles.
     """
     for profile in labeling.get_v_label():
-        if not is_func_consistent_with_label_with_profile(network, labeling,
-                                                          function, profile):
+        # if not Updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+        if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
             return False
     return True
 
