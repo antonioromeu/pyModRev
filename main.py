@@ -981,7 +981,6 @@ def is_func_consistent_with_label(network: Network,
     Checks if a function is consistent with a labeling across all profiles.
     """
     for profile in labeling.get_v_label():
-        # if not Updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
         if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
             return False
     return True
