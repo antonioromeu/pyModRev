@@ -6,6 +6,7 @@ additional consistency rules.
 
 import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
+from updaters.updater import Updater
 from network.network import Network
 from network.function import Function
 from network.inconsistency_solution import Inconsistency_Solution
@@ -58,7 +59,11 @@ class AsyncUpdater(TimeSeriesUpdater):
             ctl.add('base', [], '#show incT/3.')
 
     @staticmethod
-    def is_func_consistent_with_label_with_profile(network, labeling, function, profile) -> bool:
+    def is_func_consistent_with_label_with_profile(
+            network,
+            labeling,
+            function,
+            profile) -> bool:
         """
         Evaluates whether the function's regulatory logic aligns with the
         expected dynamic behavior of the network. This implementation assumes a
@@ -89,7 +94,7 @@ class AsyncUpdater(TimeSeriesUpdater):
 
             if n_clauses:
                 for clause in function.get_clauses():
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
@@ -109,17 +114,17 @@ class AsyncUpdater(TimeSeriesUpdater):
 
         return True
 
-    @staticmethod
-    def is_func_consistent_with_label(network: Network,
-                                      labeling: Inconsistency_Solution,
-                                      function: Function) -> int:
-        """
-        Checks if a function is consistent with a labeling across all profiles.
-        """
-        for profile in labeling.get_v_label():
-            if not AsyncUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-                return False
-        return True
+    # @staticmethod
+    # def is_func_consistent_with_label(network: Network,
+    #                                   labeling: Inconsistency_Solution,
+    #                                   function: Function) -> int:
+    #     """
+    #     Checks if a function is consistent with a labeling across all profiles.
+    #     """
+    #     for profile in labeling.get_v_label():
+    #         if not AsyncUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+    #             return False
+    #     return True
 
     @staticmethod
     def n_func_inconsistent_with_label_with_profile(
@@ -158,7 +163,7 @@ class AsyncUpdater(TimeSeriesUpdater):
 
             if n_clauses:
                 for clause in function.get_clauses():
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
@@ -185,29 +190,28 @@ class AsyncUpdater(TimeSeriesUpdater):
             time += 1
         return result
 
-    @staticmethod
-    def n_func_inconsistent_with_label(
-            network: Network,
-            labeling: Inconsistency_Solution,
-            function: Function) -> int:
-        """
-        Checks the consistency of a function against a labeling. It verifies each
-        profile and returns the consistency status (consistent, inconsistent, or
-        double inconsistency).
-        """
-        result = Inconsistencies.CONSISTENT.value
+    # @staticmethod
+    # def n_func_inconsistent_with_label(
+    #         network: Network,
+    #         labeling: Inconsistency_Solution,
+    #         function: Function) -> int:
+    #     """
+    #     Checks the consistency of a function against a labeling. It verifies
+    #     each profile and returns the consistency status (consistent,
+    #     inconsistent, or double inconsistency).
+    #     """
+    #     result = Inconsistencies.CONSISTENT.value
 
-        # Verify for each profile
-        for key, _ in labeling.get_v_label().items():
-            ret = AsyncUpdater.n_func_inconsistent_with_label_with_profile(network, labeling,
-                                                            function, key)
-            if configuration["debug"]:
-                print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
+    #     # Verify for each profile
+    #     for key, _ in labeling.get_v_label().items():
+    #         ret = AsyncUpdater.n_func_inconsistent_with_label_with_profile(network, labeling, function, key)
+    #         if configuration["debug"]:
+    #             print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
 
-            if result == Inconsistencies.CONSISTENT.value:
-                result = ret
-            else:
-                if ret not in (result, Inconsistencies.CONSISTENT.value):
-                    result = Inconsistencies.DOUBLE_INC.value
-                    break
-        return result
+    #         if result == Inconsistencies.CONSISTENT.value:
+    #             result = ret
+    #         else:
+    #             if ret not in (result, Inconsistencies.CONSISTENT.value):
+    #                 result = Inconsistencies.DOUBLE_INC.value
+    #                 break
+    #     return result

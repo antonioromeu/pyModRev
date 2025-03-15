@@ -9,7 +9,6 @@ from typing import List, Tuple
 import clingo
 from network.network import Network
 from network.inconsistency_solution import Inconsistency_Solution
-from configuration import configuration
 from updaters.updater import Updater
 
 
@@ -189,23 +188,34 @@ class ASPHelper:
                              network.get_input_file_network()) from exc
         return result
 
+    # @staticmethod
+    # def check_consistency(network: Network, update_type: int) -> Tuple[List[
+    #         Inconsistency_Solution], int]:
+    #     """
+    #     Checks the consistency of the network based on the specified update
+    #     type.
+    #     """
+    #     result = []
+    #     optimization = -2
+    #     updater = Updater.get_updater(update_type)
+    #     result, optimization = updater.check_consistency(network, update_type)
+    #     return result, optimization
+
     @staticmethod
-    def check_consistency(network: Network, update_type: int) -> Tuple[List[
-            Inconsistency_Solution], int]:
+    def check_consistency(
+            network: Network) -> Tuple[List[Inconsistency_Solution], int]:
         """
         Checks the consistency of the network based on the specified update
         type.
         """
         result = []
         optimization = -2
-        updater = Updater.get_updater(update_type)
-        result, optimization = updater.check_consistency(network, update_type,
-                                                         configuration)
+        result, optimization = Updater.check_consistency(network)
         return result, optimization
 
     @staticmethod
-    def parse_cc_model(model: clingo.Model) -> Tuple[Inconsistency_Solution,
-                                                     int]:
+    def parse_cc_model(
+            model: clingo.Model) -> Tuple[Inconsistency_Solution, int]:
         """
         Parses a clingo model to extract inconsistency information.
         """
@@ -228,8 +238,7 @@ class ASPHelper:
                 continue
             if name == 'r_part':
                 inconsistency.add_particularization(str(args[0]))
-                # FIXME why doesn't it have continue like other IFs
-                # continue
+                continue
             if name == 'repair':
                 count += 1
                 continue

@@ -23,13 +23,13 @@ from configuration import configuration, UpdateType, Inconsistencies
 
 
 def print_help() -> None:
-    """Print help."""
+    """
+    Print help.
+    """
     help_text = f"""
     Model Revision program.
-      Given a model and a set of observations, it determines if the model is \
-        consistent.
-      If not, it computes all the minimum number of repair operations in order\
-        to render the model consistent.
+      Given a model and a set of observations, it determines if the model is consistent.
+      If not, it computes all the minimum number of repair operations in order to render the model consistent.
     Version: {configuration["version"]}
     Usage:
       main.py [-m] model_file [[-obs] observation_files...] [options]
@@ -37,30 +37,21 @@ def print_help() -> None:
       options:
         --model,-m <model_file>             Input model file.
         --observations,-obs <obs_files...>  List of observation files.
-        --observation-type,-ot <value>      Type of observations in {{ts|ss|\
-            both}}. DEFAULT: ts.
+        --observation-type,-ot <value>      Type of observations in {{ts|ss|both}}. DEFAULT: ts.
                                               ts   - time-series observations
                                               ss   - stable state observations
-                                              both - both time-series and \
-                                                stable state observations
-        --update,-up <value>                Update mode in {{a|s|c}}. \
-            DEFAULT: a.
+                                              both - both time-series and stable state observations
+        --update,-up <value>                Update mode in {{a|s|c}}. DEFAULT: a.
                                               a - asynchronous update
                                               s - synchronous update
                                               c - complete update
-        --check-consistency,-cc             Check the consistency of the model\
-              and return without repairing. DEFAULT: false.
-        --exhaustive-search                 Force exhaustive search of \
-            function repair operations. DEFAULT: false.
+        --check-consistency,-cc             Check the consistency of the model and return without repairing. DEFAULT: false.
+        --exhaustive-search                 Force exhaustive search of function repair operations. DEFAULT: false.
         --support,-su                       Support values for each variable.
-        --sub-opt                           Show sub-optimal solutions found. \
-            DEFAULT: false.
-        --verbose,-v <value>                Verbose level {{0,1,2,3}} of \
-            output. DEFAULT: 2.
-                                              0 - machine style output \
-                                                (minimalistic easily parsable)
-                                              1 - machine style output (using \
-                                                sets of sets)
+        --sub-opt                           Show sub-optimal solutions found. DEFAULT: false.
+        --verbose,-v <value>                Verbose level {{0,1,2,3}} of output. DEFAULT: 2.
+                                              0 - machine style output (minimalistic easily parsable)
+                                              1 - machine style output (using sets of sets)
                                               2 - human readable output
                                               3 - JSON format output
         --help,-h                           Print help options.
@@ -81,30 +72,33 @@ def process_arguments(network: Network, argv: List[str]) -> None:
     option_mapping = {
         '--sub-opt': 'show_solution_for_each_inconsistency',
         '--exhaustive-search': 'force_optimum',
-        '--check-consistency': 'check_consistency'
+        '--check-consistency': 'check_consistency',
+        '-cc': 'check_consistency'
     }
-    retro_options = {'--steady-state', '--ss'}
+    retro_options = {'--steady-state', '--ss'}  # TODO delete
     help_options = {'--help', '-h'}
     model_options = {'--model', '-m'}
     observation_options = {'--observations', '-obs'}
-    observation_type_options = {'--observation-type', '-ot'}
-    observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}
-    update_options = {'--update', '-up'}
-    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC,
-                     'ma': UpdateType.MASYNC}
+    observation_type_options = {'--observation-type', '-ot'}  # TODO delete
+    observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}  # TODO delete
+    update_options = {'--update', '-up'}  # TODO delete
+    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}  # TODO delete
     verbose_options = {'--verbose', '-v'}
     debug_options = {'--debug', '-d'}
-    updater_options = {'--updater', '-upr'}
 
-    for arg in argv:
+    i = 0
+    # for arg in argv:
+    while i < len(argv):
+        arg = argv[i]
         if arg == 'main.py':
+            i += 1
             continue
         if arg.startswith('-'):
             if arg in option_mapping:
                 configuration[option_mapping[arg]] = True
             elif arg in model_options | observation_options | \
                     observation_type_options | update_options | \
-                    verbose_options | updater_options:
+                    verbose_options:
                 last_opt = arg
             elif arg in retro_options:
                 obs_type = 1
@@ -116,25 +110,46 @@ def process_arguments(network: Network, argv: List[str]) -> None:
             else:
                 print_help()
                 raise ValueError(f'Invalid option: {arg}')
+            i += 1
         else:
             if last_opt in model_options:
                 if not network.get_input_file_network():
                     network.set_input_file_network(arg)
-                else:
-                    network.add_observation_file(arg)
+                i += 1
             elif last_opt in observation_options:
-                network.add_observation_file(arg)
+                # Expect two arguments: the observation file path and the updater name
+                while i < len(argv) and not argv[i].startswith('-'):
+                    if i + 1 >= len(argv) or argv[i+1].startswith('-'):
+                        print_help()
+                        raise ValueError("Expected an updater name after the observation file path")
+                    obs_path = argv[i]
+                    updater_name = argv[i + 1]
+                    try:
+                        updater_dir = os.path.join(os.path.dirname(__file__), "updaters")
+                        for filename in os.listdir(updater_dir):
+                            if filename.endswith(".py") and filename != os.path.basename(__file__):
+                                file_path = os.path.join(updater_dir, filename)
+                                classes = load_classes_from_file(file_path)
+                                for name, cls in classes.items():
+                                    if updater_name.lower() == name.lower():
+                                        updater = cls()
+                                        network.add_observation_file_with_updater(obs_path, updater)
+                        i += 2
+                    except ValueError as exc:
+                        raise ValueError('Invalid updater') from exc
             elif last_opt in observation_type_options:
                 obs_type = observation_type_values.get(arg, None)
                 if obs_type is None:
                     print_help()
                     raise ValueError(f'Invalid value for --observation-type: \
                                      {arg}')
+                i += 1
             elif last_opt in update_options:
                 configuration['update'] = update_values.get(arg, None)
                 if configuration['update'] is None:
                     print_help()
                     raise ValueError(f'Invalid value for --update: {arg}')
+                i += 1
             elif last_opt in verbose_options:
                 try:
                     verbose_level = int(arg)
@@ -146,38 +161,9 @@ def process_arguments(network: Network, argv: List[str]) -> None:
                     print_help()
                     raise ValueError(f'Invalid value for --verbose: {arg}') \
                         from exc
-            elif last_opt in updater_options:
-                try:
-                    updater_dir = os.path.join(os.path.dirname(__file__), "updaters")
-                    # available_updaters = [
-                    #             os.path.splitext(filename)[0]
-                    #             for filename in os.listdir(updater_dir)
-                    #             if filename.endswith(".py")
-                    #         ]
-                    for filename in os.listdir(updater_dir):
-                        if filename.endswith(".py") and filename != os.path.basename(__file__):
-                            file_path = os.path.join(updater_dir, filename)
-                            print(file_path)
-                            classes = load_classes_from_file(file_path)
-                            for name, cls in classes.items():
-                                try:
-                                    if arg.lower() in name.lower():
-                                        instance = cls()  # Create an instance (assuming no required arguments)
-                                        instance.add_specific_rules()
-                                        print(f"✅ Found and instantiated '{arg}' in '{filename}'")
-                                    else:
-                                        raise ValueError
-                                except ValueError:
-                                    print(f"⚠️ '{arg}' updater not found, could not instantiate")
-                                    sys.exit(0)
-                    # if any(arg in updater for updater in available_updaters):
-                    #     print(arg)
-                except ValueError as exc:
-                    raise ValueError('Invalid updater') from exc
-    if obs_type in (0, 2):
-        network.set_has_ts_obs(True)
-    if obs_type in (1, 2):
-        network.set_has_ss_obs(True)
+                i += 1
+            else:
+                i += 1
 
 
 def load_classes_from_file(file_path):
@@ -199,8 +185,8 @@ def check_consistency(network: Network) \
     result = []
     optimization = -2
     if configuration['check_asp']:
-        result, optimization = ASPHelper.check_consistency(
-            network, configuration['update'].value)
+        # result, optimization = ASPHelper.check_consistency(network, configuration['update'].value)
+        result, optimization = ASPHelper.check_consistency(network)
     else:
         pass
     return result, optimization
@@ -528,9 +514,10 @@ def repair_node_consistency_functions(
     return sol_found
 
 
-def n_func_inconsistent_with_label(network: Network,
-                                   labeling: Inconsistency_Solution,
-                                   function: Function) -> int:
+def n_func_inconsistent_with_label(
+        network: Network,
+        labeling: Inconsistency_Solution,
+        function: Function) -> int:
     """
     Checks the consistency of a function against a labeling. It verifies each
     profile and returns the consistency status (consistent, inconsistent, or
@@ -539,12 +526,11 @@ def n_func_inconsistent_with_label(network: Network,
     result = Inconsistencies.CONSISTENT.value
 
     # Verify for each profile
-    for key, _ in labeling.get_v_label().items():
-        ret = n_func_inconsistent_with_label_with_profile(network, labeling,
-                                                          function, key)
+    # for key, _ in labeling.get_v_label().items():
+    for key in labeling.get_v_label():
+        ret = n_func_inconsistent_with_label_with_profile(network, labeling, function, key)
         if configuration["debug"]:
             print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
-
         if result == Inconsistencies.CONSISTENT.value:
             result = ret
         else:
@@ -555,104 +541,129 @@ def n_func_inconsistent_with_label(network: Network,
 
 
 def n_func_inconsistent_with_label_with_profile(
-        network: Network, labeling: Inconsistency_Solution, function: Function,
-        profile: str, ) -> int:
+        network: Network,
+        labeling: Inconsistency_Solution,
+        function: Function,
+        profile: str) -> int:
     """
     Checks the consistency of a function with a specific profile in a given
     labeling. It evaluates the function's clauses over time and returns the
     consistency status (consistent, single inconsistency, or double
     inconsistency) based on the profile.
     """
-    if configuration["debug"]:
-        print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
-
-    result = Inconsistencies.CONSISTENT.value
-    profile_map = labeling.get_v_label()[profile]
-    time = 0
-    last_val = -1
-    is_stable_state = len(profile_map) == 1
-
-    while time in profile_map:
-        # If it's not a steady state, the following time must exist
-        if not is_stable_state and (time + 1) not in profile_map:
-            break
-
-        time_map = profile_map[time]
-        # Verify if it is an updated node
-        if not is_stable_state and configuration["update"] != UpdateType.SYNC:
-            updates = labeling.get_updates()[time][profile]
-            is_updated = any(update == function.get_node_id()
-                             for update in updates)
-            if not is_updated:
-                time += 1
-                continue
-
-        found_sat = False
-        n_clauses = function.get_n_clauses()
-
-        if n_clauses:
-            clauses = function.get_clauses()
-            for clause in clauses:
-                is_clause_satisfiable = True
-                _vars = function.bitarray_to_regulators(clause)
-                for var in _vars:
-                    edge = network.get_edge(var, function.get_node_id())
-                    if edge is not None:
-                        # Determine if clause is satisfiable based on edge sign
-                        if (edge.get_sign() > 0) == (time_map[var] == 0):
-                            is_clause_satisfiable = False
-                            # Stop checking if clause is already unsatisfiable
-                            break
-                    else:
-                        print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
-                        return False
-
-                # Evaluate satisfaction status of the clause
-                if is_clause_satisfiable:
-                    found_sat = True
-                    if is_stable_state:
-                        if time_map[function.get_node_id()] == 1:
-                            return Inconsistencies.CONSISTENT.value
-                        return Inconsistencies.SINGLE_INC_PART.value
-                    if profile_map[time + 1][function.get_node_id()] != 1:
-                        if result in (Inconsistencies.CONSISTENT.value,
-                                      Inconsistencies.SINGLE_INC_PART.value):
-                            result = Inconsistencies.SINGLE_INC_PART.value
-                        else:
-                            return Inconsistencies.DOUBLE_INC.value
-                    # Stop if one satisfiable clause is found
-                    break
-
-        if not found_sat:
-            if is_stable_state:
-                if n_clauses == 0:
-                    return Inconsistencies.CONSISTENT.value
-                if time_map[function.get_node_id()] == 0:
-                    return Inconsistencies.CONSISTENT.value
-                return Inconsistencies.SINGLE_INC_GEN.value
-            if n_clauses == 0:
-                if last_val < 0:
-                    last_val = time_map[function.get_node_id()]
-                if profile_map[time + 1][function.get_node_id()] != \
-                        last_val:
-                    return Inconsistencies.DOUBLE_INC.value
-            else:
-                if profile_map[time + 1][function.get_node_id()] != 0:
-                    if result in (Inconsistencies.CONSISTENT.value,
-                                  Inconsistencies.SINGLE_INC_GEN.value):
-                        result = Inconsistencies.SINGLE_INC_GEN.value
-                    else:
-                        return Inconsistencies.DOUBLE_INC.value
-        time += 1
-    return result
+    # result = 0
+    # for _, updater in network.get_observation_files_with_updater():
+    #     result += updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    # return result
+    # TODO confirmar se lógica de retornar o resultado menor faz sentido tendo em conta q está a iterar por todos os updaters
+    results = [
+        updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+        for _, updater in network.get_observation_files_with_updater()
+    ]
+    return min(results)
 
 
-def search_comparable_functions(network: Network,
-                                inconsistency: Inconsistency_Solution,
-                                inconsistent_node: Inconsistent_Node,
-                                flipped_edges: List[Edge],
-                                added_edges: List[Edge],
-                                removed_edges: List[Edge], generalize: bool):
+# def n_func_inconsistent_with_label_with_profile(
+#         network: Network, labeling: Inconsistency_Solution, function: Function,
+#         profile: str) -> int:
+#     """
+#     Checks the consistency of a function with a specific profile in a given
+#     labeling. It evaluates the function's clauses over time and returns the
+#     consistency status (consistent, single inconsistency, or double
+#     inconsistency) based on the profile.
+#     """
+#     if configuration["debug"]:
+#         print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
+
+#     result = Inconsistencies.CONSISTENT.value
+#     profile_map = labeling.get_v_label()[profile]
+#     time = 0
+#     last_val = -1
+#     is_stable_state = len(profile_map) == 1
+
+#     while time in profile_map:
+#         # If it's not a steady state, the following time must exist
+#         if not is_stable_state and (time + 1) not in profile_map:
+#             break
+
+#         time_map = profile_map[time]
+#         # Verify if it is an updated node
+#         if not is_stable_state and configuration["update"] != UpdateType.SYNC:
+#             updates = labeling.get_updates()[time][profile]
+#             is_updated = any(update == function.get_node_id()
+#                              for update in updates)
+#             if not is_updated:
+#                 time += 1
+#                 continue
+
+#         found_sat = False
+#         n_clauses = function.get_n_clauses()
+
+#         if n_clauses:
+#             clauses = function.get_clauses()
+#             for clause in clauses:
+#                 is_clause_satisfiable = True
+#                 _vars = function.bitarray_to_regulators(clause)
+#                 for var in _vars:
+#                     edge = network.get_edge(var, function.get_node_id())
+#                     if edge is not None:
+#                         # Determine if clause is satisfiable based on edge sign
+#                         if (edge.get_sign() > 0) == (time_map[var] == 0):
+#                             is_clause_satisfiable = False
+#                             # Stop checking if clause is already unsatisfiable
+#                             break
+#                     else:
+#                         print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+#                         return False
+
+#                 # Evaluate satisfaction status of the clause
+#                 if is_clause_satisfiable:
+#                     found_sat = True
+#                     if is_stable_state:
+#                         if time_map[function.get_node_id()] == 1:
+#                             return Inconsistencies.CONSISTENT.value
+#                         return Inconsistencies.SINGLE_INC_PART.value
+#                     if profile_map[time + 1][function.get_node_id()] != 1:
+#                         if result in (Inconsistencies.CONSISTENT.value,
+#                                       Inconsistencies.SINGLE_INC_PART.value):
+#                             result = Inconsistencies.SINGLE_INC_PART.value
+#                         else:
+#                             return Inconsistencies.DOUBLE_INC.value
+#                     # Stop if one satisfiable clause is found
+#                     break
+
+#         if not found_sat:
+#             if is_stable_state:
+#                 if n_clauses == 0:
+#                     return Inconsistencies.CONSISTENT.value
+#                 if time_map[function.get_node_id()] == 0:
+#                     return Inconsistencies.CONSISTENT.value
+#                 return Inconsistencies.SINGLE_INC_GEN.value
+#             if n_clauses == 0:
+#                 if last_val < 0:
+#                     last_val = time_map[function.get_node_id()]
+#                 if profile_map[time + 1][function.get_node_id()] != \
+#                         last_val:
+#                     return Inconsistencies.DOUBLE_INC.value
+#             else:
+#                 if profile_map[time + 1][function.get_node_id()] != 0:
+#                     if result in (Inconsistencies.CONSISTENT.value,
+#                                   Inconsistencies.SINGLE_INC_GEN.value):
+#                         result = Inconsistencies.SINGLE_INC_GEN.value
+#                     else:
+#                         return Inconsistencies.DOUBLE_INC.value
+#         time += 1
+#     return result
+
+
+def search_comparable_functions(
+            network: Network,
+            inconsistency: Inconsistency_Solution,
+            inconsistent_node: Inconsistent_Node,
+            flipped_edges: List[Edge],
+            added_edges: List[Edge],
+            removed_edges: List[Edge],
+            generalize: bool) -> bool:
     """
     Searches for comparable functions that can repair the inconsistency of a
     node. It evaluates potential replacement functions and applies the
@@ -901,77 +912,77 @@ def search_non_comparable_functions(network: Network,
     return sol_found
 
 
-def is_func_consistent_with_label_with_profile(
-        network: Network, labeling: Inconsistency_Solution, function: Function,
-        profile: str) -> bool:
-    """
-    Evaluates whether the function's regulatory logic aligns with the expected
-    time-dependent behavior of the network, ensuring that the function's
-    clauses are satisfied at each time step. It considers both stable states
-    and dynamic updates based on the profile's labeling.
-    """
-    if configuration["debug"]:
-        print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
+# def is_func_consistent_with_label_with_profile(
+#         network: Network, labeling: Inconsistency_Solution, function: Function,
+#         profile: str) -> bool:
+#     """
+#     Evaluates whether the function's regulatory logic aligns with the expected
+#     time-dependent behavior of the network, ensuring that the function's
+#     clauses are satisfied at each time step. It considers both stable states
+#     and dynamic updates based on the profile's labeling.
+#     """
+#     if configuration["debug"]:
+#         print(f"\n###DEBUG: Checking consistency of function: {function.print_function()} of node {function.get_node_id()}")
 
-    profile_map = labeling.get_v_label()[profile]
-    time = 0
-    is_stable_state = len(profile_map) == 1
-    last_val = -1
+#     profile_map = labeling.get_v_label()[profile]
+#     time = 0
+#     is_stable_state = len(profile_map) == 1
+#     last_val = -1
 
-    while time in profile_map:
-        if not is_stable_state and time + 1 not in profile_map:
-            break
+#     while time in profile_map:
+#         if not is_stable_state and time + 1 not in profile_map:
+#             break
 
-        time_map = profile_map[time]
-        if not is_stable_state and configuration["update"] != UpdateType.SYNC:
-            updates = labeling.get_updates()[time][profile]
-            is_updated = any(update == function.get_node_id()
-                             for update in updates)
-            if not is_updated:
-                time += 1
-                continue
+#         time_map = profile_map[time]
+#         if not is_stable_state and configuration["update"] != UpdateType.SYNC:
+#             updates = labeling.get_updates()[time][profile]
+#             is_updated = any(update == function.get_node_id()
+#                              for update in updates)
+#             if not is_updated:
+#                 time += 1
+#                 continue
 
-        found_sat = False
-        n_clauses = function.get_n_clauses()
+#         found_sat = False
+#         n_clauses = function.get_n_clauses()
 
-        if n_clauses:
-            clauses = function.get_clauses()
-            for clause in clauses:
-                is_clause_satisfiable = True
-                _vars = function.bitarray_to_regulators(clause)
-                for var in _vars:
-                    edge = network.get_edge(var, function.get_node_id())
-                    if edge is not None:
-                        # Determine if clause is satisfiable based on edge sign
-                        if (edge.get_sign() > 0) == (time_map[var] == 0):
-                            is_clause_satisfiable = False
-                            # Stop checking if clause is already unsatisfiable
-                            break
-                    else:
-                        print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
-                        return False
-                if is_clause_satisfiable:
-                    found_sat = True
-                    if is_stable_state:
-                        return time_map[function.get_node_id()] == 1
-                    if profile_map[time + 1][function.get_node_id()] != 1:
-                        return False
-                    break
+#         if n_clauses:
+#             clauses = function.get_clauses()
+#             for clause in clauses:
+#                 is_clause_satisfiable = True
+#                 _vars = function.bitarray_to_regulators(clause)
+#                 for var in _vars:
+#                     edge = network.get_edge(var, function.get_node_id())
+#                     if edge is not None:
+#                         # Determine if clause is satisfiable based on edge sign
+#                         if (edge.get_sign() > 0) == (time_map[var] == 0):
+#                             is_clause_satisfiable = False
+#                             # Stop checking if clause is already unsatisfiable
+#                             break
+#                     else:
+#                         print(f"WARN: Missing edge from {var} to {function.get_node_id()}")
+#                         return False
+#                 if is_clause_satisfiable:
+#                     found_sat = True
+#                     if is_stable_state:
+#                         return time_map[function.get_node_id()] == 1
+#                     if profile_map[time + 1][function.get_node_id()] != 1:
+#                         return False
+#                     break
 
-        if not found_sat:
-            if is_stable_state:
-                return n_clauses == 0 or time_map[function.get_node_id()] == 0
-            if n_clauses == 0:
-                if last_val < 0:
-                    last_val = time_map[function.get_node_id()]
-                if profile_map[time + 1][function.get_node_id()] != \
-                        last_val:
-                    return False
-            else:
-                if profile_map[time + 1][function.get_node_id()] != 0:
-                    return False
-        time += 1
-    return True
+#         if not found_sat:
+#             if is_stable_state:
+#                 return n_clauses == 0 or time_map[function.get_node_id()] == 0
+#             if n_clauses == 0:
+#                 if last_val < 0:
+#                     last_val = time_map[function.get_node_id()]
+#                 if profile_map[time + 1][function.get_node_id()] != \
+#                         last_val:
+#                     return False
+#             else:
+#                 if profile_map[time + 1][function.get_node_id()] != 0:
+#                     return False
+#         time += 1
+#     return True
 
 
 def is_func_consistent_with_label(network: Network,
@@ -980,10 +991,35 @@ def is_func_consistent_with_label(network: Network,
     """
     Checks if a function is consistent with a labeling across all profiles.
     """
-    for profile in labeling.get_v_label():
-        if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-            return False
-    return True
+    return all(
+        is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+        for profile in labeling.get_v_label()
+    )
+    # for profile in labeling.get_v_label():
+    #     if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+    #         return False
+    # return True
+
+
+def is_func_consistent_with_label_with_profile(
+        network: Network,
+        labeling: Inconsistency_Solution,
+        function: Function,
+        profile: str) -> bool:
+    """
+    Evaluates whether the function's regulatory logic aligns with the expected
+    time-dependent behavior of the network, ensuring that the function's
+    clauses are satisfied at each time step. It considers both stable states
+    and dynamic updates based on the profile's labeling.
+    """
+    return all(
+        updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+        for _, updater in network.get_observation_files_with_updater()
+    )
+    # for _, updater in network.get_observation_files_with_updater():
+    #     if not updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+    #         return False
+    # return True
 
 
 def is_function_in_bottom_half(network: Network, function: Function) -> bool:

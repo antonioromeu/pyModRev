@@ -6,6 +6,7 @@ consistency.
 
 import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
+from updaters.updater import Updater
 from network.network import Network
 from network.function import Function
 from network.inconsistency_solution import Inconsistency_Solution
@@ -24,7 +25,6 @@ class CompleteUpdater(TimeSeriesUpdater):
         This method loads a configuration-defined rule set into the control
         object (ctl) and applies consistency constraints if enabled.
         """
-        # ctl.load(configuration['asp_cc_d_ma'])
         ctl.add('base', [], '1{update(P,T,V):vertex(V)} :- exp(P), time(P,T), \
                 time(P,T+1).')
         ctl.add('base', [], 'vlabel(P,T+1,V,1) :- update(P,T,V), 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), not r_part(V), time(P,T+1).')
@@ -71,7 +71,7 @@ class CompleteUpdater(TimeSeriesUpdater):
 
             if n_clauses:
                 for clause in function.get_clauses():
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
@@ -90,17 +90,17 @@ class CompleteUpdater(TimeSeriesUpdater):
             time += 1
         return True
 
-    @staticmethod
-    def is_func_consistent_with_label(network: Network,
-                                      labeling: Inconsistency_Solution,
-                                      function: Function) -> int:
-        """
-        Checks if a function is consistent with a labeling across all profiles.
-        """
-        for profile in labeling.get_v_label():
-            if not CompleteUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-                return False
-        return True
+    # @staticmethod
+    # def is_func_consistent_with_label(network: Network,
+    #                                   labeling: Inconsistency_Solution,
+    #                                   function: Function) -> int:
+    #     """
+    #     Checks if a function is consistent with a labeling across all profiles.
+    #     """
+    #     for profile in labeling.get_v_label():
+    #         if not CompleteUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+    #             return False
+    #     return True
 
     @staticmethod
     def n_func_inconsistent_with_label_with_profile(
@@ -139,7 +139,7 @@ class CompleteUpdater(TimeSeriesUpdater):
 
             if n_clauses:
                 for clause in function.get_clauses():
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
@@ -166,29 +166,29 @@ class CompleteUpdater(TimeSeriesUpdater):
             time += 1
         return result
 
-    @staticmethod
-    def n_func_inconsistent_with_label(
-            network: Network,
-            labeling: Inconsistency_Solution,
-            function: Function) -> int:
-        """
-        Checks the consistency of a function against a labeling. It verifies each
-        profile and returns the consistency status (consistent, inconsistent, or
-        double inconsistency).
-        """
-        result = Inconsistencies.CONSISTENT.value
+    # @staticmethod
+    # def n_func_inconsistent_with_label(
+    #         network: Network,
+    #         labeling: Inconsistency_Solution,
+    #         function: Function) -> int:
+    #     """
+    #     Checks the consistency of a function against a labeling. It verifies each
+    #     profile and returns the consistency status (consistent, inconsistent, or
+    #     double inconsistency).
+    #     """
+    #     result = Inconsistencies.CONSISTENT.value
 
-        # Verify for each profile
-        for key, _ in labeling.get_v_label().items():
-            ret = CompleteUpdater.n_func_inconsistent_with_label_with_profile(network, labeling,
-                                                            function, key)
-            if configuration["debug"]:
-                print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
+    #     # Verify for each profile
+    #     for key, _ in labeling.get_v_label().items():
+    #         ret = CompleteUpdater.n_func_inconsistent_with_label_with_profile(network, labeling,
+    #                                                         function, key)
+    #         if configuration["debug"]:
+    #             print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
 
-            if result == Inconsistencies.CONSISTENT.value:
-                result = ret
-            else:
-                if ret not in (result, Inconsistencies.CONSISTENT.value):
-                    result = Inconsistencies.DOUBLE_INC.value
-                    break
-        return result
+    #         if result == Inconsistencies.CONSISTENT.value:
+    #             result = ret
+    #         else:
+    #             if ret not in (result, Inconsistencies.CONSISTENT.value):
+    #                 result = Inconsistencies.DOUBLE_INC.value
+    #                 break
+    #     return result

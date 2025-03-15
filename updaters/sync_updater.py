@@ -5,6 +5,7 @@ to handle synchronous updates with consistency checks.
 
 import clingo
 from updaters.time_series_updater import TimeSeriesUpdater
+from updaters.updater import Updater
 from network.network import Network
 from network.function import Function
 from network.inconsistency_solution import Inconsistency_Solution
@@ -24,7 +25,6 @@ class SyncUpdater(TimeSeriesUpdater):
         object (ctl) and applies consistency constraints based on the provided
         configuration.
         """
-        # ctl.load(configuration['asp_cc_d_s'])
         ctl.add('base', [], 'vlabel(P,T+1,V,1) :- 1{noneNegative(P,T,V,Id):functionOr(V,Id)}, vertex(V), exp(P), not r_part(V), not topologicalerror(V), time(P,T), time(P,T+1).')
         ctl.add('base', [], 'vlabel(P,T+1,V,0) :- {noneNegative(P,T,V,Id):functionOr(V,Id)}0, vertex(V), exp(P), functionOr(V,_), not r_gen(V), not topologicalerror(V), time(P,T), time(P,T+1).')
         ctl.add('base', [], 'topologicalerror(V) :- time(P1,T1), time(P2,T2), T1 != T2, time(P1,T1+1), time(P2,T2+1), vertex(V), {vlabel(P1,T1,V1,S1): vlabel(P2,T2,V1,S2), S1!=S2, functionAnd(V,Id, V1)}0, vlabel(P1,T1+1,V,S3), vlabel(P2,T2+1,V,S4), S3 != S4, not input(V).')
@@ -80,7 +80,7 @@ class SyncUpdater(TimeSeriesUpdater):
             if n_clauses:
                 clauses = function.get_clauses()
                 for clause in clauses:
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
@@ -100,17 +100,17 @@ class SyncUpdater(TimeSeriesUpdater):
             time += 1
         return True
 
-    @staticmethod
-    def is_func_consistent_with_label(network: Network,
-                                      labeling: Inconsistency_Solution,
-                                      function: Function) -> bool:
-        """
-        Checks if a function is consistent with a labeling across all profiles.
-        """
-        for profile in labeling.get_v_label():
-            if not SyncUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-                return False
-        return True
+    # @staticmethod
+    # def is_func_consistent_with_label(network: Network,
+    #                                   labeling: Inconsistency_Solution,
+    #                                   function: Function) -> bool:
+    #     """
+    #     Checks if a function is consistent with a labeling across all profiles.
+    #     """
+    #     for profile in labeling.get_v_label():
+    #         if not SyncUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
+    #             return False
+    #     return True
 
     @staticmethod
     def n_func_inconsistent_with_label_with_profile(
@@ -144,12 +144,12 @@ class SyncUpdater(TimeSeriesUpdater):
             if n_clauses:
                 clauses = function.get_clauses()
                 for clause in clauses:
-                    if TimeSeriesUpdater.is_clause_satisfiable(clause, network, time_map, function):
+                    if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
                         # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
                             if result in (Inconsistencies.CONSISTENT.value,
-                                        Inconsistencies.SINGLE_INC_PART.value):
+                                          Inconsistencies.SINGLE_INC_PART.value):
                                 result = Inconsistencies.SINGLE_INC_PART.value
                             else:
                                 return Inconsistencies.DOUBLE_INC.value
@@ -172,29 +172,29 @@ class SyncUpdater(TimeSeriesUpdater):
             time += 1
         return result
 
-    @staticmethod
-    def n_func_inconsistent_with_label(
-            network: Network,
-            labeling: Inconsistency_Solution,
-            function: Function) -> int:
-        """
-        Checks the consistency of a function against a labeling. It verifies each
-        profile and returns the consistency status (consistent, inconsistent, or
-        double inconsistency).
-        """
-        result = Inconsistencies.CONSISTENT.value
+    # @staticmethod
+    # def n_func_inconsistent_with_label(
+    #         network: Network,
+    #         labeling: Inconsistency_Solution,
+    #         function: Function) -> int:
+    #     """
+    #     Checks the consistency of a function against a labeling. It verifies each
+    #     profile and returns the consistency status (consistent, inconsistent, or
+    #     double inconsistency).
+    #     """
+    #     result = Inconsistencies.CONSISTENT.value
 
-        # Verify for each profile
-        for key, _ in labeling.get_v_label().items():
-            ret = SyncUpdater.n_func_inconsistent_with_label_with_profile(network, labeling,
-                                                            function, key)
-            if configuration["debug"]:
-                print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
+    #     # Verify for each profile
+    #     for key, _ in labeling.get_v_label().items():
+    #         ret = SyncUpdater.n_func_inconsistent_with_label_with_profile(network, labeling,
+    #                                                         function, key)
+    #         if configuration["debug"]:
+    #             print(f"DEBUG: Consistency value: {ret} for node {function.get_node_id()} with function: {function.print_function()}")
 
-            if result == Inconsistencies.CONSISTENT.value:
-                result = ret
-            else:
-                if ret not in (result, Inconsistencies.CONSISTENT.value):
-                    result = Inconsistencies.DOUBLE_INC.value
-                    break
-        return result
+    #         if result == Inconsistencies.CONSISTENT.value:
+    #             result = ret
+    #         else:
+    #             if ret not in (result, Inconsistencies.CONSISTENT.value):
+    #                 result = Inconsistencies.DOUBLE_INC.value
+    #                 break
+    #     return result

@@ -33,12 +33,5 @@ configuration = {
     'show_solution_for_each_inconsistency': False,
     'show_all_functions': False,
     # Just check the consistency of the model and return
-    'check_consistency': False,
-    'updaters': ''
-    # 'asp_cc_base': './asp/base.lp',
-    # 'asp_cc_ss': './asp/stable_state/core_ss.lp',
-    # 'asp_cc_d': './asp/dynamic/core_ts.lp',
-    # 'asp_cc_d_a': './asp/dynamic/a_update.lp',
-    # 'asp_cc_d_s': './asp/dynamic/s_update.lp',
-    # 'asp_cc_d_ma': './asp/dynamic/ma_update.lp'
+    'check_consistency': False
 }

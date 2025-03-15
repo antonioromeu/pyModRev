@@ -27,6 +27,7 @@ class Network:
         self.regulators = {}  # Reverse of graph {'node_id_1': ['node_id_2'], 'node_id_2': ['node_id_1'], 'node_id_3': ['node_id_1'], ...}
         self.input_file_network = ''
         self.observation_files = []
+        self.observation_files_with_updater = []  # [('examples/fissionYeastDavidich2008/obs/ts/ssync/s_o1_t5.lp', <sync_updater.SyncUpdater object at 0x10c7bea90>)]
         self.has_ss_obs = False
         self.has_ts_obs = False
 
@@ -84,6 +85,12 @@ class Network:
         Returns the list of observation files associated with the network.
         """
         return self.observation_files
+
+    def get_observation_files_with_updater(self) -> List:
+        """
+        Returns the list of observation files associated with the network.
+        """
+        return self.observation_files_with_updater
 
     def get_has_ss_obs(self) -> bool:
         """
@@ -163,3 +170,9 @@ class Network:
         Adds an observation file to the network.
         """
         self.observation_files.append(observation_file)
+
+    def add_observation_file_with_updater(self, observation_file: str, updater) -> None:
+        """
+        Adds an observation file and respective updater to the network.
+        """
+        self.observation_files_with_updater.append((observation_file, updater))

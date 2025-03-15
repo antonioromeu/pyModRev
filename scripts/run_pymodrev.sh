@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # /usr/bin/python3 main.py -m examples/fissionYeastDavidich2008/corrupted/00/fissionYeastDavidich2008-0-0-0-1-net.lp -obs examples/fissionYeastDavidich2008/obs/ts/async/a_o1_t5.lp -ot ts -up a -v 2
+# /usr/bin/python3 main.py -m examples/fissionYeastDavidich2008/corrupted/00/fissionYeastDavidich2008-0-0-0-1-net.lp -obs examples/fissionYeastDavidich2008/obs/ts/async/a_o1_t5.lp completeupdater -v 2
 # ./scripts/run_pymodrev.sh -n boolean_cell_cycle -s 05 -f 24 -c -nc -no 1
 # ./scripts/run_pymodrev.sh -n thNetworkGarg2007 -s 00 -f 24 -c -no 1
 # ./scripts/run_modrev.sh -n thNetworkGarg2007 -s 02 -f 24 -c -no 1
