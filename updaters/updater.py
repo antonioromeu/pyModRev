@@ -115,7 +115,7 @@ class Updater(ABC):
                         for model in handle:
                             if model and model.optimality_proven:
                                 from asp_helper import ASPHelper
-                                res, opt = ASPHelper.parse_cc_model(model)
+                                res, opt = ASPHelper.parse_cc_model(model, updater)
                                 result.append(res)
                                 optimization = opt
                     else:
@@ -126,7 +126,11 @@ class Updater(ABC):
         return result, optimization
 
     @staticmethod
-    def is_clause_satisfiable(clause, network, time_map, function) -> bool:
+    def is_clause_satisfiable(
+            clause,
+            network: Network,
+            time_map,
+            function: Function) -> bool:
         """
         Evaluates whether a clause is satisfiable given the network and current time mapping.
         """

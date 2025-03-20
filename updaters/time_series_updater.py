@@ -8,6 +8,8 @@ configuration.
 from abc import abstractmethod
 import clingo
 from updaters.updater import Updater
+from network.function import Function
+from network.inconsistency_solution import Inconsistency_Solution
 from configuration import configuration
 
 
@@ -57,7 +59,11 @@ class TimeSeriesUpdater(Updater):
         updater.add_specific_rules(ctl)
 
     @staticmethod
-    def should_update(time: int, labeling, profile: str, function) -> bool:
+    def should_update(
+            time: int,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> bool:
         """
         Determines if the function should be considered for an update at the
         given time. In a time series scenario, this method checks if the

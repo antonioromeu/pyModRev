@@ -45,7 +45,11 @@ class SteadyStateUpdater(Updater):
             ctl.add('base', [], '#show inc/2.')
 
     @staticmethod
-    def is_func_consistent_with_label_with_profile(network, labeling, function, profile) -> bool:
+    def is_func_consistent_with_label_with_profile(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> bool:
         """
         Evaluates whether the function's regulatory logic aligns with the
         expected steady-state behavior of the network. This method assumes a
@@ -56,9 +60,9 @@ class SteadyStateUpdater(Updater):
 
         profile_map = labeling.get_v_label()[profile]
         # For steady state, we expect exactly one time mapping
-        if len(profile_map) != 1:
-            print("ERROR: SteadyStateUpdater expects a single time mapping.")
-            return False
+        # if len(profile_map) != 1:
+        #     print("ERROR: SteadyStateUpdater expects a single time mapping.")
+        #     return False
 
         # Retrieve the unique time mapping
         time_key = next(iter(profile_map))
@@ -134,7 +138,9 @@ class SteadyStateUpdater(Updater):
 
     @staticmethod
     def n_func_inconsistent_with_label_with_profile(
-            network: Network, labeling: Inconsistency_Solution, function: Function,
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
             profile: str) -> int:
         """
         Checks the consistency of a function with a specific profile in a given
@@ -147,9 +153,9 @@ class SteadyStateUpdater(Updater):
 
         profile_map = labeling.get_v_label()[profile]
         # For steady state, we expect exactly one time mapping
-        if len(profile_map) != 1:
-            print("ERROR: SteadyStateUpdater expects a single time mapping.")
-            return False
+        # if len(profile_map) != 1:
+        #     print("ERROR: SteadyStateUpdater expects a single time mapping.")
+        #     return False
 
         result = Inconsistencies.CONSISTENT.value
         profile_map = labeling.get_v_label()[profile]

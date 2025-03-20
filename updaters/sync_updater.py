@@ -54,8 +54,10 @@ class SyncUpdater(TimeSeriesUpdater):
 
     @staticmethod
     def is_func_consistent_with_label_with_profile(
-          network: Network, labeling: Inconsistency_Solution, function: Function,
-          profile: str) -> bool:
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> bool:
         """
         Evaluates whether the function's regulatory logic aligns with the expected
         time-dependent behavior of the network, ensuring that the function's

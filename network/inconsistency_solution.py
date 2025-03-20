@@ -40,6 +40,7 @@ class Inconsistency_Solution:
         self.n_e_operations = 0
         self.n_repair_operations = 0
         self.has_impossibility = False  # Solution is impossible to repair
+        self.updater = None
 
     def get_i_nodes(self) -> Dict[str, Inconsistent_Node]:
         """
@@ -107,6 +108,12 @@ class Inconsistency_Solution:
         Returns whether the solution is impossible to repair.
         """
         return self.has_impossibility
+
+    def get_updater(self):
+        return self.updater
+    
+    def set_updater(self, updater):
+        self.updater = updater
 
     def set_impossibility(self, impossibility: bool) -> None:
         """

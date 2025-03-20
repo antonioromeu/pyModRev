@@ -202,8 +202,7 @@ class ASPHelper:
     #     return result, optimization
 
     @staticmethod
-    def check_consistency(
-            network: Network) -> Tuple[List[Inconsistency_Solution], int]:
+    def check_consistency(network: Network) -> Tuple[List[Inconsistency_Solution], int]:
         """
         Checks the consistency of the network based on the specified update
         type.
@@ -214,12 +213,12 @@ class ASPHelper:
         return result, optimization
 
     @staticmethod
-    def parse_cc_model(
-            model: clingo.Model) -> Tuple[Inconsistency_Solution, int]:
+    def parse_cc_model(model: clingo.Model, updater) -> Tuple[Inconsistency_Solution, int]:
         """
         Parses a clingo model to extract inconsistency information.
         """
         inconsistency = Inconsistency_Solution()
+        inconsistency.set_updater(updater)
         count = 0
         for atom in model.symbols(atoms=True):
             name = atom.name

@@ -40,7 +40,11 @@ class CompleteUpdater(TimeSeriesUpdater):
                     exp(P), functionOr(V,_), r_gen(V), time(P,T+1).')
 
     @staticmethod
-    def is_func_consistent_with_label_with_profile(network, labeling, function, profile) -> bool:
+    def is_func_consistent_with_label_with_profile(
+            network: Network,
+            labeling: Inconsistency_Solution,
+            function: Function,
+            profile: str) -> bool:
         """
         Evaluates whether the function's regulatory logic aligns with the
         expected dynamic behavior of the network. This implementation assumes a
@@ -62,7 +66,7 @@ class CompleteUpdater(TimeSeriesUpdater):
             time_map = profile_map[time]
 
             # Always check update condition for time series (no steady state branch)
-            if not TimeSeriesUpdater.should_update(time, labeling, profile, function):
+            if not TimeSeriesUpdater.should_update(time, labeling,function, profile):
                 time += 1
                 continue
 
@@ -130,7 +134,7 @@ class CompleteUpdater(TimeSeriesUpdater):
             time_map = profile_map[time]
 
             # Always check update condition for time series (no steady state branch)
-            if not TimeSeriesUpdater.should_update(time, labeling, profile, function):
+            if not TimeSeriesUpdater.should_update(time, labeling, function, profile):
                 time += 1
                 continue
 

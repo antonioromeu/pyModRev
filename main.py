@@ -59,7 +59,9 @@ def print_help() -> None:
     print(help_text)
 
 
-def process_arguments(network: Network, argv: List[str]) -> None:
+def process_arguments(
+        network: Network,
+        argv: List[str]) -> None:
     """
     Process command-line arguments and configure network accordingly.
     """
@@ -166,19 +168,18 @@ def process_arguments(network: Network, argv: List[str]) -> None:
                 i += 1
 
 
-def load_classes_from_file(file_path):
+def load_classes_from_file(file_path: str) -> Dict:
     """
     Dynamically loads classes from a Python file.
     """
     module_name = os.path.splitext(os.path.basename(file_path))[0]
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
+    spec = util.spec_from_file_location(module_name, file_path)
+    module = util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return {name: cls for name, cls in inspect.getmembers(module, inspect.isclass)}
 
 
-def check_consistency(network: Network) \
-        -> Tuple[List[Inconsistency_Solution], int]:
+def check_consistency(network: Network) -> Tuple[List[Inconsistency_Solution], int]:
     """
     Check network consistency using ASP solver or alternative method.
     """
@@ -192,8 +193,9 @@ def check_consistency(network: Network) \
     return result, optimization
 
 
-def print_consistency(inconsistencies: List[Inconsistency_Solution],
-                      optimization: int) -> None:
+def print_consistency(
+        inconsistencies: List[Inconsistency_Solution],
+        optimization: int) -> None:
     """
     Print the consistency status of the network in a structured JSON-like
     format.
@@ -212,8 +214,9 @@ def print_consistency(inconsistencies: List[Inconsistency_Solution],
     print("}")
 
 
-def repair_inconsistencies(network: Network,
-                           inconsistency: Inconsistency_Solution) -> None:
+def repair_inconsistencies(
+        network: Network,
+        inconsistency: Inconsistency_Solution) -> None:
     """
     This function receives an inconsistent model with a set of nodes to be
     repaired and tries to repair the target nodes making the model consistent
@@ -229,9 +232,10 @@ def repair_inconsistencies(network: Network,
             print(f"#Found a repair for node - {node_id}")
 
 
-def repair_node_consistency(network: Network,
-                            inconsistency: Inconsistency_Solution,
-                            inconsistent_node: Inconsistent_Node) -> None:
+def repair_node_consistency(
+        network: Network,
+        inconsistency: Inconsistency_Solution,
+        inconsistent_node: Inconsistent_Node) -> None:
     """
     This function repairs a given node and determines all possible solutions
     consider 0 .. N add/remove repair operations, starting with 0 repairs of
@@ -354,8 +358,10 @@ def repair_node_consistency(network: Network,
 
 
 def repair_node_consistency_flipping_edges(
-        network: Network, inconsistency: Inconsistency_Solution,
-        inconsistent_node: Inconsistent_Node, added_edges: List[Edge],
+        network: Network,
+        inconsistency: Inconsistency_Solution,
+        inconsistent_node: Inconsistent_Node,
+        added_edges: List[Edge],
         removed_edges: List[Edge]) -> bool:
     """
     Tries to repair a node's consistency by flipping edges in the network.
@@ -418,9 +424,12 @@ def repair_node_consistency_flipping_edges(
 
 
 def repair_node_consistency_functions(
-        network: Network, inconsistency: Inconsistency_Solution,
-        inconsistent_node: Inconsistent_Node, flipped_edges: List[Edge],
-        added_edges: List[Edge], removed_edges: List[Edge]) -> bool:
+        network: Network,
+        inconsistency: Inconsistency_Solution,
+        inconsistent_node: Inconsistent_Node,
+        flipped_edges: List[Edge],
+        added_edges: List[Edge],
+        removed_edges: List[Edge]) -> bool:
     """
     Repairs a node's function if needed by checking for consistency after
     topological changes, and if necessary, searches for a function change to
@@ -556,11 +565,14 @@ def n_func_inconsistent_with_label_with_profile(
     #     result += updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
     # return result
     # TODO confirmar se lógica de retornar o resultado menor faz sentido tendo em conta q está a iterar por todos os updaters
-    results = [
-        updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
-        for _, updater in network.get_observation_files_with_updater()
-    ]
-    return min(results)
+    # results = [
+    #     updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    #     for _, updater in network.get_observation_files_with_updater()
+    # ]
+    # return max(results)
+    updater = labeling.get_updater()
+    return updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    # return min(results)
 
 
 # def n_func_inconsistent_with_label_with_profile(
@@ -657,13 +669,13 @@ def n_func_inconsistent_with_label_with_profile(
 
 
 def search_comparable_functions(
-            network: Network,
-            inconsistency: Inconsistency_Solution,
-            inconsistent_node: Inconsistent_Node,
-            flipped_edges: List[Edge],
-            added_edges: List[Edge],
-            removed_edges: List[Edge],
-            generalize: bool) -> bool:
+        network: Network,
+        inconsistency: Inconsistency_Solution,
+        inconsistent_node: Inconsistent_Node,
+        flipped_edges: List[Edge],
+        added_edges: List[Edge],
+        removed_edges: List[Edge],
+        generalize: bool) -> bool:
     """
     Searches for comparable functions that can repair the inconsistency of a
     node. It evaluates potential replacement functions and applies the
@@ -729,12 +741,13 @@ def search_comparable_functions(
     return sol_found
 
 
-def search_non_comparable_functions(network: Network,
-                                    inconsistency: Inconsistency_Solution,
-                                    inconsistent_node: Inconsistent_Node,
-                                    flipped_edges: List[Edge],
-                                    added_edges: List[Edge],
-                                    removed_edges: List[Edge]) -> bool:
+def search_non_comparable_functions(
+        network: Network,
+        inconsistency: Inconsistency_Solution,
+        inconsistent_node: Inconsistent_Node,
+        flipped_edges: List[Edge],
+        added_edges: List[Edge],
+        removed_edges: List[Edge]) -> bool:
     """
     Searches for non-comparable functions to resolve inconsistencies in the
     given network. Attempts to replace an inconsistent function with a
@@ -985,9 +998,10 @@ def search_non_comparable_functions(network: Network,
 #     return True
 
 
-def is_func_consistent_with_label(network: Network,
-                                  labeling: Inconsistency_Solution,
-                                  function: Function) -> bool:
+def is_func_consistent_with_label(
+        network: Network,
+        labeling: Inconsistency_Solution,
+        function: Function) -> bool:
     """
     Checks if a function is consistent with a labeling across all profiles.
     """
@@ -1012,17 +1026,21 @@ def is_func_consistent_with_label_with_profile(
     clauses are satisfied at each time step. It considers both stable states
     and dynamic updates based on the profile's labeling.
     """
-    return all(
-        updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
-        for _, updater in network.get_observation_files_with_updater()
-    )
+    updater = labeling.get_updater()
+    return updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    # return all(
+    #     updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    #     for _, updater in network.get_observation_files_with_updater()
+    # )
     # for _, updater in network.get_observation_files_with_updater():
     #     if not updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
     #         return False
     # return True
 
 
-def is_function_in_bottom_half(network: Network, function: Function) -> bool:
+def is_function_in_bottom_half(
+        network: Network,
+        function: Function) -> bool:
     """
     Determines if a function is in the bottom half based on its regulators.
     If exact middle determination is enabled, it uses a different method.
@@ -1037,8 +1055,9 @@ def is_function_in_bottom_half(network: Network, function: Function) -> bool:
     return function.compare_level_list(mid_level) < 0
 
 
-def is_function_in_bottom_half_by_state(network: Network, function: Function) \
-        -> bool:
+def is_function_in_bottom_half_by_state(
+        network: Network,
+        function: Function) -> bool:
     """
     Determines if a function is in the bottom half based on its state by
     evaluating its output across all possible input combinations.
@@ -1067,8 +1086,10 @@ def is_function_in_bottom_half_by_state(network: Network, function: Function) \
     return n_zero > (entries // 2)
 
 
-def get_function_value(network: Network, function: Function,
-                       input_map: Dict[str, int]):
+def get_function_value(
+        network: Network,
+        function: Function,
+        input_map: Dict[str, int]):
     """
     Evaluates the value of a function based on the given input map. It checks
     the satisfaction of the function's clauses.
@@ -1095,8 +1116,10 @@ def get_function_value(network: Network, function: Function,
     return False
 
 
-def get_edges_combinations(edges: List[Edge], n: int, index_start: int = 0) \
-        -> List[List[Edge]]:
+def get_edges_combinations(
+        edges: List[Edge],
+        n: int,
+        index_start: int = 0) -> List[List[Edge]]:
     """
     Generate all possible combinations of edges with specified size.
     """
@@ -1114,7 +1137,7 @@ def get_edges_combinations(edges: List[Edge], n: int, index_start: int = 0) \
     return result
 
 
-def model_revision(network: Network):
+def model_revision(network: Network) -> None:
     """
     Analyze and revise a given network model for consistency.
     Procedure:
@@ -1188,7 +1211,9 @@ def model_revision(network: Network):
         best_solution.print_solution(configuration["verbose"], True)
 
 
-def is_in(item: Function, lst: List[Function]) -> bool:
+def is_in(
+        item: Function,
+        lst: List[Function]) -> bool:
     """
     Checks if a function is present in a list by comparing it to each element.
     """
