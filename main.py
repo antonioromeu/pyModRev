@@ -20,6 +20,10 @@ from network.inconsistent_node import Inconsistent_Node
 from network.repair_set import Repair_Set
 from asp_helper import ASPHelper
 from configuration import configuration, UpdateType, Inconsistencies
+from updaters.async_updater import AsyncUpdater
+from updaters.sync_updater import SyncUpdater
+from updaters.steady_state_updater import SteadyStateUpdater
+from updaters.complete_updater import CompleteUpdater
 
 
 def print_help() -> None:
@@ -89,7 +93,6 @@ def process_arguments(
     debug_options = {'--debug', '-d'}
 
     i = 0
-    # for arg in argv:
     while i < len(argv):
         arg = argv[i]
         if arg == 'main.py':
@@ -119,14 +122,29 @@ def process_arguments(
                     network.set_input_file_network(arg)
                 i += 1
             elif last_opt in observation_options:
-                # Expect two arguments: the observation file path and the updater name
                 while i < len(argv) and not argv[i].startswith('-'):
                     if i + 1 >= len(argv) or argv[i+1].startswith('-'):
                         print_help()
                         raise ValueError("Expected an updater name after the observation file path")
                     obs_path = argv[i]
+                    network.add_observation_file(obs_path)
                     updater_name = argv[i + 1]
+                    # network.add_updater_name(updater_name)
                     try:
+                        if updater_name.lower() != SteadyStateUpdater.__name__.lower():
+                            network.set_has_ts_obs(True)
+                            if updater_name.lower() == SyncUpdater.__name__.lower():
+                                network.add_updater_name('SyncUpdater')
+                            elif updater_name.lower() == AsyncUpdater.__name__.lower():
+                                network.add_updater_name('AsyncUpdater')
+                            elif updater_name.lower() == CompleteUpdater.__name__.lower():
+                                network.add_updater_name('CompleteUpdater')
+                            else:
+                                raise Exception("Unknown non-steady state updater type encountered")
+                            if len(network.get_updaters_name()) > 1:
+                                raise Exception(f"Conflicting updater types detected: {', '.join(network.get_updaters_name())} cannot coexist.")
+                        else:
+                            network.set_has_ss_obs(True)
                         updater_dir = os.path.join(os.path.dirname(__file__), "updaters")
                         for filename in os.listdir(updater_dir):
                             if filename.endswith(".py") and filename != os.path.basename(__file__):
@@ -135,7 +153,8 @@ def process_arguments(
                                 for name, cls in classes.items():
                                     if updater_name.lower() == name.lower():
                                         updater = cls()
-                                        network.add_observation_file_with_updater(obs_path, updater)
+                                        network.add_updater(updater)
+                                        # network.add_observation_file_with_updater(obs_path, updater)
                         i += 2
                     except ValueError as exc:
                         raise ValueError('Invalid updater') from exc
@@ -533,9 +552,6 @@ def n_func_inconsistent_with_label(
     double inconsistency).
     """
     result = Inconsistencies.CONSISTENT.value
-
-    # Verify for each profile
-    # for key, _ in labeling.get_v_label().items():
     for key in labeling.get_v_label():
         ret = n_func_inconsistent_with_label_with_profile(network, labeling, function, key)
         if configuration["debug"]:
@@ -560,19 +576,26 @@ def n_func_inconsistent_with_label_with_profile(
     consistency status (consistent, single inconsistency, or double
     inconsistency) based on the profile.
     """
+    if len(labeling.get_v_label()[profile]) == 1 and network.get_has_ss_obs():
+        return SteadyStateUpdater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    for updater in network.get_updaters():
+        if len(labeling.get_v_label()[profile]) != 1 and updater.__class__.__name__.lower() != SteadyStateUpdater.__name__.lower():
+            return updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
     # result = 0
-    # for _, updater in network.get_observation_files_with_updater():
-    #     result += updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    # if network.get_has_ss_obs():
+    #     result = SteadyStateUpdater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    # if result == 0 and network.get_updaters():
+    #     updater = network.get_updaters().pop()
+    #     result = updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
     # return result
-    # TODO confirmar se lógica de retornar o resultado menor faz sentido tendo em conta q está a iterar por todos os updaters
-    # results = [
-    #     updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
-    #     for _, updater in network.get_observation_files_with_updater()
-    # ]
-    # return max(results)
-    updater = labeling.get_updater()
-    return updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
-    # return min(results)
+
+    # results = []
+    # for _, updater in network.get_observation_files_with_updater():
+    #     result = updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
+    #     results.append(result)
+    # return max(results) if results else 0
+    # updater = labeling.get_updater()
+    # return updater.n_func_inconsistent_with_label_with_profile(network, labeling, function, profile)
 
 
 # def n_func_inconsistent_with_label_with_profile(
@@ -1009,10 +1032,6 @@ def is_func_consistent_with_label(
         is_func_consistent_with_label_with_profile(network, labeling, function, profile)
         for profile in labeling.get_v_label()
     )
-    # for profile in labeling.get_v_label():
-    #     if not is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-    #         return False
-    # return True
 
 
 def is_func_consistent_with_label_with_profile(
@@ -1026,16 +1045,42 @@ def is_func_consistent_with_label_with_profile(
     clauses are satisfied at each time step. It considers both stable states
     and dynamic updates based on the profile's labeling.
     """
-    updater = labeling.get_updater()
-    return updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    if len(labeling.get_v_label()[profile]) == 1 and network.get_has_ss_obs():
+        return SteadyStateUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    for updater in network.get_updaters():
+        if len(labeling.get_v_label()[profile]) != 1 and updater.__class__.__name__.lower() != SteadyStateUpdater.__name__.lower():
+            return updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    # result = False
+    # if network.get_has_ss_obs():
+    #     result = SteadyStateUpdater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    # if network.get_has_ts_obs() and not result and network.get_updaters():
+    #     updater = network.get_updaters().pop()
+    #     result = updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    # return result
+    # # print(updater)
     # return all(
     #     updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
     #     for _, updater in network.get_observation_files_with_updater()
     # )
+    # non_steady_results = []
+    # steady_results = []
     # for _, updater in network.get_observation_files_with_updater():
-    #     if not updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile):
-    #         return False
-    # return True
+    #     print(updater)
+    #     if isinstance(updater, SteadyStateUpdater):
+    #         print(updater)
+    #         steady_results.append(
+    #             updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    #         )
+    #     else:
+    #         non_steady_results.append(
+    #             updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
+    #         )
+    # If there is at least one non-steady updater, its result must be True,
+    # and also all steady state updaters must return True.
+    # non_steady_consistent = all(non_steady_results) if non_steady_results else True
+    # steady_consistent = all(steady_results) if steady_results else True
+    # return non_steady_consistent and steady_consistent
+    # return Updater.is_func_consistent_with_label_with_profile(network, labeling, function, profile)
 
 
 def is_function_in_bottom_half(
@@ -1169,7 +1214,6 @@ def model_revision(network: Network) -> None:
     # At this point we have an inconsistent network with node candidates
     # to be repaired
     best_solution = None
-
     for inconsistency in f_inconsistencies:
         repair_inconsistencies(network, inconsistency)
 

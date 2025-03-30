@@ -5,7 +5,7 @@ The Network class provides methods to manage nodes, edges, and network-related
 properties such as input files and observations.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Set
 from network.node import Node
 from network.edge import Edge
 
@@ -26,10 +26,24 @@ class Network:
         self.graph = {}  # {'node_id_1': [edge_1_2, edge_1_3], 'node_id_2': [edge_2_1], ...}
         self.regulators = {}  # Reverse of graph {'node_id_1': ['node_id_2'], 'node_id_2': ['node_id_1'], 'node_id_3': ['node_id_1'], ...}
         self.input_file_network = ''
-        self.observation_files = []
+        self.observation_files = []  # ['examples/boolean_cell_cycle/obs/ts/async/a_o3_t20.lp', 'examples/boolean_cell_cycle/obs/ss/attractors.lp']
         self.observation_files_with_updater = []  # [('examples/fissionYeastDavidich2008/obs/ts/ssync/s_o1_t5.lp', <sync_updater.SyncUpdater object at 0x10c7bea90>)]
+        self.updaters_name = set()
+        self.updaters = set()
         self.has_ss_obs = False
         self.has_ts_obs = False
+
+    def get_updaters(self) -> Set:
+        return self.updaters
+
+    def add_updater(self, updater) -> None:
+        self.updaters.add(updater)
+
+    def get_updaters_name(self) -> Set:
+        return self.updaters_name
+
+    def add_updater_name(self, updater_name: str) -> None:
+        self.updaters_name.add(updater_name)
 
     def get_node(self, node_id: str) -> Node:
         """

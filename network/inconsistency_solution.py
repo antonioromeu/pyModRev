@@ -40,7 +40,6 @@ class Inconsistency_Solution:
         self.n_e_operations = 0
         self.n_repair_operations = 0
         self.has_impossibility = False  # Solution is impossible to repair
-        self.updater = None
 
     def get_i_nodes(self) -> Dict[str, Inconsistent_Node]:
         """
@@ -108,12 +107,6 @@ class Inconsistency_Solution:
         Returns whether the solution is impossible to repair.
         """
         return self.has_impossibility
-
-    def get_updater(self):
-        return self.updater
-    
-    def set_updater(self, updater):
-        self.updater = updater
 
     def set_impossibility(self, impossibility: bool) -> None:
         """
@@ -336,8 +329,8 @@ class Inconsistency_Solution:
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")
                     first = False
-                    print(f"A:({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}, {added_edge.get_sign()})" if verbose_level > 0
-                          else f"A,{added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()}, {added_edge.get_sign()}", end="")
+                    print(f"A:({added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()})" if verbose_level > 0
+                          else f"A,{added_edge.get_start_node().get_id()},{added_edge.get_end_node().get_id()},{added_edge.get_sign()}", end="")
                 for removed_edge in repair.get_removed_edges():
                     if not first:
                         print(";" if verbose_level > 0 else ":", end="")

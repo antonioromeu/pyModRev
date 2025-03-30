@@ -75,51 +75,34 @@ class Updater(ABC):
                 if configuration['debug']:
                     print(warning_code, file=sys.stderr)
                     print(message, file=sys.stderr)
-            # TODO confirmar se é necessário um clingo novo para cada obs/updater
-            for obs_file, updater in network.get_observation_files_with_updater():
-                ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
-                ctl.add('base', [], 'sign(0;1).')
-                ctl.add('base', [], 'complement(T,S) :- sign(S),sign(T),T!=S.')
-                ctl.add('base', [], 'vertex(V) :- edge(V,_,_).')
-                ctl.add('base', [], 'vertex(V) :- edge(_,V,_).')
-                ctl.add('base', [], '{r_gen(V)} :- vertex(V), not fixed(V).')
-                ctl.add('base', [], '{r_part(V)} :- vertex(V), not fixed(V).')
-                ctl.add('base', [], 'repair(V) :- r_gen(V).')
-                ctl.add('base', [], 'repair(V) :- r_part(V).')
-                # TODO confirmar se estas linhas são necessárias
-                ctl.add('base', [], '#show repair/1.')
-                ctl.add('base', [], '#show r_gen/1.')
-                ctl.add('base', [], '#show r_part/1.')
-                ctl.load(network.get_input_file_network())
-                non_steady_updaters = set()
-                from updaters.async_updater import AsyncUpdater
-                from updaters.sync_updater import SyncUpdater
-                from updaters.steady_state_updater import SteadyStateUpdater
-                from updaters.complete_updater import CompleteUpdater
-                if type(updater).__name__ != SteadyStateUpdater.__name__:
-                    if type(updater).__name__ == SyncUpdater.__name__:
-                        non_steady_updaters.add('SyncUpdater')
-                    elif type(updater).__name__ == AsyncUpdater.__name__:
-                        non_steady_updaters.add('AsyncUpdater')
-                    elif type(updater).__name__ == CompleteUpdater.__name__:
-                        non_steady_updaters.add('CompleteUpdater')
-                    else:
-                        raise Exception("Unknown non-steady state updater type encountered")
-                    if len(non_steady_updaters) > 1:
-                        raise Exception(f"Conflicting updater types detected: {', '.join(non_steady_updaters)} cannot coexist.")
+            ctl = clingo.Control(['--opt-mode=optN'], logger, 20)
+            ctl.add('base', [], 'sign(0;1).')
+            ctl.add('base', [], 'complement(T,S) :- sign(S),sign(T),T!=S.')
+            ctl.add('base', [], 'vertex(V) :- edge(V,_,_).')
+            ctl.add('base', [], 'vertex(V) :- edge(_,V,_).')
+            ctl.add('base', [], '{r_gen(V)} :- vertex(V), not fixed(V).')
+            ctl.add('base', [], '{r_part(V)} :- vertex(V), not fixed(V).')
+            ctl.add('base', [], 'repair(V) :- r_gen(V).')
+            ctl.add('base', [], 'repair(V) :- r_part(V).')
+            ctl.add('base', [], '#show repair/1.')
+            ctl.add('base', [], '#show r_gen/1.')
+            ctl.add('base', [], '#show r_part/1.')
+            for updater in network.get_updaters():
                 updater.apply_update_rules(ctl, updater)
+            ctl.load(network.get_input_file_network())
+            for obs_file in network.get_observation_files():
                 ctl.load(obs_file)
-                ctl.ground([('base', [])])
-                with ctl.solve(yield_=True) as handle:
-                    if handle.get().satisfiable:
-                        for model in handle:
-                            if model and model.optimality_proven:
-                                from asp_helper import ASPHelper
-                                res, opt = ASPHelper.parse_cc_model(model, updater)
-                                result.append(res)
-                                optimization = opt
-                    else:
-                        optimization = -1
+            ctl.ground([('base', [])])
+            with ctl.solve(yield_=True) as handle:
+                if handle.get().satisfiable:
+                    for model in handle:
+                        if model and model.optimality_proven:
+                            from asp_helper import ASPHelper
+                            res, opt = ASPHelper.parse_cc_model(model)
+                            result.append(res)
+                            optimization = opt
+                else:
+                    optimization = -1
         except Exception as e:
             print(f'Failed to check consistency: {e}')
             sys.exit(-1)

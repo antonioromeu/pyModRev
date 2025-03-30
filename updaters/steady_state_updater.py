@@ -37,11 +37,8 @@ class SteadyStateUpdater(Updater):
         ctl.add('base', [], '#minimize {1,p,V : r_part(V)}.')
         ctl.add('base', [], '#show vlabel/3.')
         if configuration['check_consistency']:
-            ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,0), 1{noneNegative(P,V\
-                    ,Id):functionOr(V,Id)}, vertex(V), ss(P), r_part(V).')
-            ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,1), {noneNegative(P,V \
-                    ,Id):functionOr(V,Id)}0, vertex(V), ss(P), functionOr(V,_)\
-                    , r_gen(V).')
+            ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,0), 1{noneNegative(P,V,Id):functionOr(V,Id)}, vertex(V), ss(P), r_part(V).')
+            ctl.add('base', [], 'inc(P,V) :- vlabel(P,V,1), {noneNegative(P,V ,Id):functionOr(V,Id)}0, vertex(V), ss(P), functionOr(V,_), r_gen(V).')
             ctl.add('base', [], '#show inc/2.')
 
     @staticmethod
@@ -59,9 +56,10 @@ class SteadyStateUpdater(Updater):
             print(f"\n###DEBUG: Checking steady-state consistency of function: {function.print_function()} of node {function.get_node_id()}")
 
         profile_map = labeling.get_v_label()[profile]
+
         # For steady state, we expect exactly one time mapping
         # if len(profile_map) != 1:
-        #     print("ERROR: SteadyStateUpdater expects a single time mapping.")
+        #     # print("ERROR: SteadyStateUpdater expects a single time mapping.")
         #     return False
 
         # Retrieve the unique time mapping
