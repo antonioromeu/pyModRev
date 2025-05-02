@@ -36,19 +36,14 @@ def print_help() -> None:
       If not, it computes all the minimum number of repair operations in order to render the model consistent.
     Version: {configuration["version"]}
     Usage:
-      main.py [-m] model_file [[-obs] observation_files...] [options]
+      main.py --model <model_file> --observations <obs_1> <updater_1> [<obs_2> <updater_2> ...] [options]
 
       options:
         --model,-m <model_file>             Input model file.
-        --observations,-obs <obs_files...>  List of observation files.
-        --observation-type,-ot <value>      Type of observations in {{ts|ss|both}}. DEFAULT: ts.
-                                              ts   - time-series observations
-                                              ss   - stable state observations
-                                              both - both time-series and stable state observations
-        --update,-up <value>                Update mode in {{a|s|c}}. DEFAULT: a.
-                                              a - asynchronous update
-                                              s - synchronous update
-                                              c - complete update
+        --observations, -obs <obs/updater pairs...>  
+                                            List of observation file and updater pairs.
+                                            Each observation must be followed by its updater type.
+                                              Example: -obs obs1.lp asyncupdater obs2.lp syncupdater
         --check-consistency,-cc             Check the consistency of the model and return without repairing. DEFAULT: false.
         --exhaustive-search                 Force exhaustive search of function repair operations. DEFAULT: false.
         --support,-su                       Support values for each variable.
@@ -73,7 +68,7 @@ def process_arguments(
         print_help()
         raise ValueError('Invalid number of arguments')
 
-    obs_type = 0
+    # obs_type = 0
     last_opt = '-m'
     option_mapping = {
         '--sub-opt': 'show_solution_for_each_inconsistency',
@@ -81,14 +76,14 @@ def process_arguments(
         '--check-consistency': 'check_consistency',
         '-cc': 'check_consistency'
     }
-    retro_options = {'--steady-state', '--ss'}  # TODO delete
+    # retro_options = {'--steady-state', '--ss'}  # TODO delete
     help_options = {'--help', '-h'}
     model_options = {'--model', '-m'}
     observation_options = {'--observations', '-obs'}
-    observation_type_options = {'--observation-type', '-ot'}  # TODO delete
-    observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}  # TODO delete
-    update_options = {'--update', '-up'}  # TODO delete
-    update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}  # TODO delete
+    # observation_type_options = {'--observation-type', '-ot'}  # TODO delete
+    # observation_type_values = {'ts': 0, 'ss': 1, 'both': 2}  # TODO delete
+    # update_options = {'--update', '-up'}  # TODO delete
+    # update_values = {'a': UpdateType.ASYNC, 's': UpdateType.SYNC, 'ma': UpdateType.MASYNC}  # TODO delete
     verbose_options = {'--verbose', '-v'}
     debug_options = {'--debug', '-d'}
 
@@ -101,12 +96,14 @@ def process_arguments(
         if arg.startswith('-'):
             if arg in option_mapping:
                 configuration[option_mapping[arg]] = True
-            elif arg in model_options | observation_options | \
-                    observation_type_options | update_options | \
+            elif arg in model_options | \
+                    observation_options | \
                     verbose_options:
+                    # observation_type_options | \
+                    # update_options | \
                 last_opt = arg
-            elif arg in retro_options:
-                obs_type = 1
+            # elif arg in retro_options:
+            #     obs_type = 1
             elif arg in help_options:
                 print_help()
                 sys.exit(0)
@@ -129,7 +126,6 @@ def process_arguments(
                     obs_path = argv[i]
                     network.add_observation_file(obs_path)
                     updater_name = argv[i + 1]
-                    # network.add_updater_name(updater_name)
                     try:
                         if updater_name.lower() != SteadyStateUpdater.__name__.lower():
                             network.set_has_ts_obs(True)
@@ -154,23 +150,22 @@ def process_arguments(
                                     if updater_name.lower() == name.lower():
                                         updater = cls()
                                         network.add_updater(updater)
-                                        # network.add_observation_file_with_updater(obs_path, updater)
                         i += 2
                     except ValueError as exc:
                         raise ValueError('Invalid updater') from exc
-            elif last_opt in observation_type_options:
-                obs_type = observation_type_values.get(arg, None)
-                if obs_type is None:
-                    print_help()
-                    raise ValueError(f'Invalid value for --observation-type: \
-                                     {arg}')
-                i += 1
-            elif last_opt in update_options:
-                configuration['update'] = update_values.get(arg, None)
-                if configuration['update'] is None:
-                    print_help()
-                    raise ValueError(f'Invalid value for --update: {arg}')
-                i += 1
+            # elif last_opt in observation_type_options:
+            #     obs_type = observation_type_values.get(arg, None)
+            #     if obs_type is None:
+            #         print_help()
+            #         raise ValueError(f'Invalid value for --observation-type: \
+            #                          {arg}')
+            #     i += 1
+            # elif last_opt in update_options:
+            #     configuration['update'] = update_values.get(arg, None)
+            #     if configuration['update'] is None:
+            #         print_help()
+            #         raise ValueError(f'Invalid value for --update: {arg}')
+            #     i += 1
             elif last_opt in verbose_options:
                 try:
                     verbose_level = int(arg)

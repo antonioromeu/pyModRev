@@ -134,14 +134,12 @@ class SyncUpdater(TimeSeriesUpdater):
                 for clause in clauses:
                     if Updater.is_clause_satisfiable(clause, network, time_map, function):
                         found_sat = True
-                        # In a dynamic update, require a transition to a 1-label at the next time step.
                         if profile_map[time + 1][function.get_node_id()] != 1:
                             if result in (Inconsistencies.CONSISTENT.value,
                                           Inconsistencies.SINGLE_INC_PART.value):
                                 result = Inconsistencies.SINGLE_INC_PART.value
                             else:
                                 return Inconsistencies.DOUBLE_INC.value
-                        # Stop if one satisfiable clause is found
                         break
             if not found_sat:
                 if n_clauses == 0:
