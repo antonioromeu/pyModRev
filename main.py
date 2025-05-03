@@ -38,12 +38,12 @@ def print_help() -> None:
     Usage:
       main.py --model <model_file> --observations <obs_1> <updater_1> [<obs_2> <updater_2> ...] [options]
 
-      options:
         --model,-m <model_file>             Input model file.
         --observations, -obs <obs/updater pairs...>  
                                             List of observation file and updater pairs.
                                             Each observation must be followed by its updater type.
                                               Example: -obs obs1.lp asyncupdater obs2.lp syncupdater
+      options:
         --check-consistency,-cc             Check the consistency of the model and return without repairing. DEFAULT: false.
         --exhaustive-search                 Force exhaustive search of function repair operations. DEFAULT: false.
         --support,-su                       Support values for each variable.
